@@ -18,7 +18,7 @@ export default function AppointmentList() {
         setAppointments(response.data?.appointments || response.data || []);
       } catch (err) {
         setError('Failed to fetch scheduled clinical appointment list matrix nodes.');
-      } bits {
+      } finally {
         setLoading(false);
       }
     };
