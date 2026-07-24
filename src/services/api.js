@@ -19,7 +19,7 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
-    const token = getCookieToken() || localStorage.getItem('auth_token'); // Fallback for testing [cite: 154]
+    const token = getCookieToken() || localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -28,20 +28,18 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Global event hook to broadcast 403 restriction exceptions cleanly
 export const setAccountRestrictionHandler = (onRestricted) => {
   apiClient.interceptors.response.use(
     (response) => response,
     (error) => {
       const errorMsg = error.response?.data?.message || '';
       
-      // Intercept explicit 403 status conditions for on-hold and deleted states [cite: 45, 47]
       if (error.response?.status === 403 && (errorMsg.includes('hold') || errorMsg.includes('deleted'))) {
         onRestricted({
           status: errorMsg.includes('deleted') ? 'deleted' : 'holded',
           message: errorMsg
         });
-        return new Promise(() => {}); // Halts downstream UI chain execution
+        return new Promise(() => {});
       }
 
       if (
@@ -55,6 +53,7 @@ export const setAccountRestrictionHandler = (onRestricted) => {
     }
   );
 };
+
 export const patientEndpoints = {
   // Discovery Matrix
   filterDoctors: (specialization = '') => 
@@ -69,12 +68,13 @@ export const patientEndpoints = {
   filterHospitals: (type = 'hospital', pincode = '') => 
     apiClient.get(`/filter/filter-hospitals?type=${type}${pincode ? `&pincode=${pincode}` : ''}`),
 
-  // Profile lifecycle
+  // Profile Lifecycle
   getUserData: () => 
     apiClient.get('/auth/get-user-data'),
   
+  // Changed from POST to PUT request as requested
   completeProfile: (payload) => 
-    apiClient.post('/auth/profile/complete/general_user', payload),
+    apiClient.put('/auth/profile/complete/general_user', payload),
   
   uploadPhoto: (formData) => 
     apiClient.post('/auth/upload-photo', formData, {
@@ -84,7 +84,6 @@ export const patientEndpoints = {
   deletePhoto: () => 
     apiClient.delete('/auth/delete-profile-pic'),
   
-  // Changed from POST to PUT as requested
   changePassword: (newPassword) => 
     apiClient.put('/auth/change-password', { newPassword }),
 
@@ -108,9 +107,9 @@ export const patientEndpoints = {
   updateAddress: (payload) => 
     apiClient.put('/address/updateAddress', payload),
   
-  // Changed from POST to DELETE request as requested
+  // Switched to standard DELETE request transmitting JSON payload schema mapping parameters
   deleteAddress: (addressId) => 
-    apiClient.delete(`/address/deleteAddress/${addressId}`),
+    apiClient.delete('/address/deleteAddress', { data: { addressId } }),
 
   // Appointments Ecosystem
   listAppointments: () => 
