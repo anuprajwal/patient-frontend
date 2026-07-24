@@ -114,6 +114,9 @@ export const patientEndpoints = {
   // Appointments Ecosystem
   listAppointments: () => 
     apiClient.get('/appointment/list-appointments'),
+
+  createAppointment: (payload) =>
+    apiClient.post('/appointment/create-appointment', payload),
     
   logout: () => deleteAuthCookiesAndRedirect()
 };
