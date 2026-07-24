@@ -15,13 +15,20 @@
 //       setLoading(true);
 //       setError('');
 //       try {
-//         const response = await patientEndpoints.showDoctorSlots(doctor.user_id);
-//         // Fallback to initial embedded payload parser if specific endpoint context differs
-//         const baseSlots = response.data?.slots || doctor.user?.doctorSlots?.slots;
-//         if (typeof baseSlots === 'string') {
-//           setSlotsData(JSON.parse(baseSlots));
-//         } else if (Array.isArray(baseSlots)) {
-//           setSlotsData(baseSlots);
+//         const response = await patientEndpoints.showDoctorSlots(doctor.user_id || doctor.id);
+        
+//         // Handles standalone payload formatting structure cleanly [cite: 36]
+//         let baseSlotsElement = null;
+//         if (response.data?.slots && Array.isArray(response.data.slots) && response.data.slots[0]) {
+//           baseSlotsElement = response.data.slots[0].slots; // Targets inner string map matrix [cite: 36, 37]
+//         } else {
+//           baseSlotsElement = response.data?.slots || doctor.user?.doctorSlots?.slots;
+//         }
+
+//         if (typeof baseSlotsElement === 'string') {
+//           setSlotsData(JSON.parse(baseSlotsElement));
+//         } else if (Array.isArray(baseSlotsElement)) {
+//           setSlotsData(baseSlotsElement);
 //         } else {
 //           setSlotsData([]);
 //         }
@@ -31,7 +38,7 @@
 //         setLoading(false);
 //       }
 //     };
-//     if (doctor?.user_id) fetchSlots();
+//     if (doctor) fetchSlots();
 //   }, [doctor]);
 
 //   return (
@@ -48,13 +55,13 @@
 //             <div className="w-28 h-28 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mx-auto"><User className="w-12 h-12" /></div>
 //           )}
 //           <div>
-//             <h3 className="text-xl font-bold text-slate-900">{doctor.user?.username}</h3>
+//             <h3 className="text-xl font-bold text-slate-900">{doctor.user?.username || 'Dr. Practitioner'}</h3>
 //             <p className="text-brand-600 font-semibold text-sm mt-0.5">{doctor.specialization}</p>
 //           </div>
 //           <div className="border-t border-slate-100 pt-4 flex flex-col gap-3 text-sm text-slate-600 text-left">
 //             <div className="flex items-center gap-3"><Award className="w-5 h-5 text-slate-400" /> <span>{doctor.experience_years} Years Experience</span></div>
 //             <div className="flex items-center gap-3"><IndianRupee className="w-5 h-5 text-slate-400" /> <span className="font-bold text-slate-800">₹{doctor.consultation_fee} Fee</span></div>
-//             <div className="flex items-center gap-3"><Clock className="w-5 h-5 text-slate-400" /> <span>{doctor.appointment_time} min Session Blocks</span></div>
+//             <div className="flex items-center gap-3"><Clock className="w-5 h-5 text-slate-400" /> <span>{doctor.appointment_time || 45} min Session Blocks</span></div>
 //           </div>
 //         </div>
 
@@ -69,32 +76,30 @@
 //           {loading ? <Loader /> : (
 //             <div className="space-y-6">
 //               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-//                 {slotsData.map((dayObj, idx) => (
-//                   <button
-//                     key={idx}
-//                     onClick={() => setSelectedDayIndex(idx)}
-//                     disabled={!dayObj.mode}
-//                     className={`p-3 rounded-lg border text-left transition-all ${
-//                       selectedDayIndex === idx 
-//                         ? 'bg-brand-600 border-brand-600 text-white shadow-sm' 
-//                         : dayObj.mode 
-//                           ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
-//                           : 'bg-slate-50 opacity-40 border-slate-200 text-slate-400 cursor-not-allowed'
-//                     }`}
-//                   >
-//                     <span className="block text-xs font-semibold capitalize opacity-75">{dayObj.day}</span>
-//                     <span className="block text-sm font-bold mt-0.5">{dayObj.date}</span>
-//                     {dayObj.mode && (
-//                       <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase mt-2 ${
+//                 {slotsData.map((dayObj, idx) => {
+//                   const hasSlots = dayObj.slots && dayObj.slots.length > 0;
+//                   return (
+//                     <button
+//                       key={idx}
+//                       onClick={() => setSelectedDayIndex(idx)}
+//                       className={`p-3 rounded-lg border text-left transition-all ${
 //                         selectedDayIndex === idx 
-//                           ? 'bg-white/20 text-white' 
-//                           : 'bg-brand-50 text-brand-700'
-//                       }`}>
-//                         {dayObj.mode === 'online' ? <Video className="w-2.5 h-2.5" /> : <Home className="w-2.5 h-2.5" />} {dayObj.mode}
-//                       </span>
-//                     )}
-//                   </button>
-//                 ))}
+//                           ? 'bg-brand-600 border-brand-600 text-white shadow-sm' 
+//                           : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
+//                       }`}
+//                     >
+//                       <span className="block text-xs font-semibold capitalize opacity-75">{dayObj.day}</span>
+//                       <span className="block text-sm font-bold mt-0.5">{dayObj.date}</span>
+//                       {dayObj.mode && (
+//                         <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase mt-2 ${
+//                           selectedDayIndex === idx ? 'bg-white/20 text-white' : 'bg-brand-50 text-brand-700'
+//                         }`}>
+//                           {dayObj.mode === 'online' ? <Video className="w-2.5 h-2.5" /> : <Home className="w-2.5 h-2.5" />} {dayObj.mode}
+//                         </span>
+//                       )}
+//                     </button>
+//                   );
+//                 })}
 //               </div>
 
 //               {selectedDayIndex !== null && slotsData[selectedDayIndex] && (
@@ -114,12 +119,6 @@
 //                   )}
 //                 </div>
 //               )}
-
-//               {selectedDayIndex === null && (
-//                 <div className="text-center p-8 border border-dashed border-slate-200 rounded-lg text-slate-400 text-xs">
-//                   Choose an operational day matrix item to view appointment availability window metrics.
-//                 </div>
-//               )}
 //             </div>
 //           )}
 //         </div>
@@ -127,8 +126,6 @@
 //     </div>
 //   );
 // }
-
-
 
 import React, { useState, useEffect } from 'react';
 import { patientEndpoints } from '../../services/api';
@@ -149,18 +146,18 @@ export default function DoctorDetails({ doctor, onBack }) {
       try {
         const response = await patientEndpoints.showDoctorSlots(doctor.user_id || doctor.id);
         
-        // Handles standalone payload formatting structure cleanly [cite: 36]
-        let baseSlotsElement = null;
+        let targetSlotsBlock = null;
+        // Ingest array node tracking based on incoming explicit data mapping structures
         if (response.data?.slots && Array.isArray(response.data.slots) && response.data.slots[0]) {
-          baseSlotsElement = response.data.slots[0].slots; // Targets inner string map matrix [cite: 36, 37]
+          targetSlotsBlock = response.data.slots[0].slots; 
         } else {
-          baseSlotsElement = response.data?.slots || doctor.user?.doctorSlots?.slots;
+          targetSlotsBlock = response.data?.slots || doctor.user?.doctorSlots?.slots;
         }
 
-        if (typeof baseSlotsElement === 'string') {
-          setSlotsData(JSON.parse(baseSlotsElement));
-        } else if (Array.isArray(baseSlotsElement)) {
-          setSlotsData(baseSlotsElement);
+        if (typeof targetSlotsBlock === 'string') {
+          setSlotsData(JSON.parse(targetSlotsBlock));
+        } else if (Array.isArray(targetSlotsBlock)) {
+          setSlotsData(targetSlotsBlock);
         } else {
           setSlotsData([]);
         }
@@ -191,7 +188,7 @@ export default function DoctorDetails({ doctor, onBack }) {
             <p className="text-brand-600 font-semibold text-sm mt-0.5">{doctor.specialization}</p>
           </div>
           <div className="border-t border-slate-100 pt-4 flex flex-col gap-3 text-sm text-slate-600 text-left">
-            <div className="flex items-center gap-3"><Award className="w-5 h-5 text-slate-400" /> <span>{doctor.experience_years} Years Experience</span></div>
+            <div className="flex items-center gap-3"><Award className="w-5 h-5 text-slate-400" /> <span>{doctor.experience_years || 0} Years Experience</span></div>
             <div className="flex items-center gap-3"><IndianRupee className="w-5 h-5 text-slate-400" /> <span className="font-bold text-slate-800">₹{doctor.consultation_fee} Fee</span></div>
             <div className="flex items-center gap-3"><Clock className="w-5 h-5 text-slate-400" /> <span>{doctor.appointment_time || 45} min Session Blocks</span></div>
           </div>
@@ -200,7 +197,7 @@ export default function DoctorDetails({ doctor, onBack }) {
         <div className="lg:col-span-2 bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
           <div>
             <h4 className="text-lg font-bold text-slate-900">Consultation Schedule Matrix</h4>
-            <p className="text-slate-500 text-xs mt-0.5">Select a practice calendar day vector below to reveal diagnostic execution windows.</p>
+            <p className="text-slate-500 text-xs mt-0.5">Select an active timeline node block item below to see exact consultation hour breakdowns.</p>
           </div>
 
           <Alert type="error" message={error} />
@@ -208,30 +205,27 @@ export default function DoctorDetails({ doctor, onBack }) {
           {loading ? <Loader /> : (
             <div className="space-y-6">
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {slotsData.map((dayObj, idx) => {
-                  const hasSlots = dayObj.slots && dayObj.slots.length > 0;
-                  return (
-                    <button
-                      key={idx}
-                      onClick={() => setSelectedDayIndex(idx)}
-                      className={`p-3 rounded-lg border text-left transition-all ${
-                        selectedDayIndex === idx 
-                          ? 'bg-brand-600 border-brand-600 text-white shadow-sm' 
-                          : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
-                      }`}
-                    >
-                      <span className="block text-xs font-semibold capitalize opacity-75">{dayObj.day}</span>
-                      <span className="block text-sm font-bold mt-0.5">{dayObj.date}</span>
-                      {dayObj.mode && (
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase mt-2 ${
-                          selectedDayIndex === idx ? 'bg-white/20 text-white' : 'bg-brand-50 text-brand-700'
-                        }`}>
-                          {dayObj.mode === 'online' ? <Video className="w-2.5 h-2.5" /> : <Home className="w-2.5 h-2.5" />} {dayObj.mode}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+                {slotsData.map((dayObj, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedDayIndex(idx)}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      selectedDayIndex === idx 
+                        ? 'bg-brand-600 border-brand-600 text-white shadow-sm' 
+                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'
+                    }`}
+                  >
+                    <span className="block text-xs font-semibold capitalize opacity-75">{dayObj.day}</span>
+                    <span className="block text-sm font-bold mt-0.5">{dayObj.date}</span>
+                    {dayObj.mode && (
+                      <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase mt-2 ${
+                        selectedDayIndex === idx ? 'bg-white/20 text-white' : 'bg-brand-50 text-brand-700'
+                      }`}>
+                        {dayObj.mode === 'online' ? <Video className="w-2.5 h-2.5" /> : <Home className="w-2.5 h-2.5" />} {dayObj.mode}
+                      </span>
+                    )}
+                  </button>
+                ))}
               </div>
 
               {selectedDayIndex !== null && slotsData[selectedDayIndex] && (
