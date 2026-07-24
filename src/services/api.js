@@ -53,6 +53,7 @@ export const setAccountRestrictionHandler = (onRestricted) => {
     }
   );
 };
+// ... existing configurations and initial methods remain exactly the same ...
 
 export const patientEndpoints = {
   // Discovery Matrix
@@ -68,55 +69,57 @@ export const patientEndpoints = {
   filterHospitals: (type = 'hospital', pincode = '') => 
     apiClient.get(`/filter/filter-hospitals?type=${type}${pincode ? `&pincode=${pincode}` : ''}`),
 
+  // Ratings & Reviews Integration
+  getDoctorRating: (doctorId) =>
+    apiClient.get(`/reviews/get-doctor-rating/${doctorId}`),
+
   // Profile Lifecycle
-  getUserData: () => 
-    apiClient.get('/auth/get-user-data'),
-  
-  // Changed from POST to PUT request as requested
-  completeProfile: (payload) => 
-    apiClient.put('/auth/profile/complete/general_user', payload),
-  
-  uploadPhoto: (formData) => 
-    apiClient.post('/auth/upload-photo', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    }),
-  
-  deletePhoto: () => 
-    apiClient.delete('/auth/delete-profile-pic'),
-  
-  changePassword: (newPassword) => 
-    apiClient.put('/auth/change-password', { newPassword }),
+  getUserData: () => apiClient.get('/auth/get-user-data'),
+  completeProfile: (payload) => apiClient.put('/auth/profile/complete/general_user', payload),
+  uploadPhoto: (formData) => apiClient.post('/auth/upload-photo', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  deletePhoto: () => apiClient.delete('/auth/delete-profile-pic'),
+  changePassword: (newPassword) => apiClient.put('/auth/change-password', { newPassword }),
 
   // OTP Verification Infrastructure
-  sendEmailOtp: () => 
-    apiClient.post('/verify/sendEmailOtp'),
-  
-  sendMobileOtp: () => 
-    apiClient.post('/verify/sendMobileOtp'),
-  
-  verifyOtp: (payload) => 
-    apiClient.post('/verify/verifyEmailMobile', payload),
+  sendEmailOtp: () => apiClient.post('/verify/sendEmailOtp'),
+  sendMobileOtp: () => apiClient.post('/verify/sendMobileOtp'),
+  verifyOtp: (payload) => apiClient.post('/verify/verifyEmailMobile', payload),
 
   // Address CRUD Matrix
-  addAddress: (payload) => 
-    apiClient.post('/address/addAddress', payload),
-  
-  getAllAddress: () => 
-    apiClient.get('/address/getAllAddress'),
-  
-  updateAddress: (payload) => 
-    apiClient.put('/address/updateAddress', payload),
-  
-  // Switched to standard DELETE request transmitting JSON payload schema mapping parameters
-  deleteAddress: (addressId) => 
-    apiClient.delete('/address/deleteAddress', { data: { addressId } }),
+  addAddress: (payload) => apiClient.post('/address/addAddress', payload),
+  getAllAddress: () => apiClient.get('/address/getAllAddress'),
+  updateAddress: (payload) => apiClient.put('/address/updateAddress', payload),
+  deleteAddress: (addressId) => apiClient.delete('/address/deleteAddress', { data: { addressId } }),
 
-  // Appointments Ecosystem
+  // Appointments Ecosystem & Payments Pipeline
   listAppointments: () => 
     apiClient.get('/appointment/list-appointments'),
-
+    
   createAppointment: (payload) =>
     apiClient.post('/appointment/create-appointment', payload),
+    
+  confirmAppointment: (appointmentId) =>
+    apiClient.put('/appointment/confirm-appointment', { appointmentId }),
+
+  // Supporting Medical Documents CRUD Matrix
+  uploadAppointmentDocument: (formData) =>
+    apiClient.post('/appointment/upload-appointment-document', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+    
+  deleteAppointmentDocument: (documentId) =>
+    apiClient.delete(`/appointment/delete-document/${documentId}`),
+    
+  replaceAppointmentDocument: (documentId, formData) =>
+    apiClient.put(`/appointment/replace-document/${documentId}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+    
+  getSingleDocument: (documentId) =>
+    apiClient.get(`/appointment/get-document/${documentId}`),
+    
+  getDocumentsForAppointment: (appointmentId) =>
+    apiClient.get(`/appointment/get-document-for/${appointmentId}`),
     
   logout: () => deleteAuthCookiesAndRedirect()
 };
