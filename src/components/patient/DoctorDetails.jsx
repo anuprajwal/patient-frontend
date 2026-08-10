@@ -440,7 +440,7 @@ export default function DoctorDetails({ doctor, onBack }) {
         const orderResponse = await patientEndpoints.createPaymentOrder({
           amount: Number(amount),
           appointmentId: createdAppointmentId,
-          doctorId: doctorUserId
+          doctorId: Number(doctorUserId)
         });
 
         const { orderId, amount: totalPaise, key } = orderResponse.data;
