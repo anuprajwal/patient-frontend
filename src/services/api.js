@@ -263,7 +263,7 @@ export const patientEndpoints = {
 
   // Push Notifications Token API
   saveNotificationToken: (spmToken) => 
-    apiClient.post('/notifications/save-token', { spmToken })
+    apiClient.post('/notifications/save-token', { spmToken }),
     
   logout: () => deleteAuthCookiesAndRedirect()
 };
