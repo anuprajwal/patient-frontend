@@ -262,7 +262,7 @@ export const patientEndpoints = {
     apiClient.get(`/address/getAllAddress/${userId}`),
 
   // Push Notifications Token API
-  saveNotificationToken: (spmToken) => 
+  saveNotificationToken: (token, platform = 'web') => 
     apiClient.post('/notifications/save-token', { spmToken }),
     
   logout: () => deleteAuthCookiesAndRedirect()

@@ -8,23 +8,23 @@ export function useNotificationToken() {
 
       let permission = Notification.permission;
 
-      // Prompt for permission every visit if denied or default
+      // Prompt for permission on every visit if denied or default
       if (permission !== 'granted') {
         permission = await Notification.requestPermission();
       }
 
       if (permission === 'granted') {
         try {
-          // Generates a persistent browser SPM notification token token string
-          let spmToken = localStorage.getItem('spm_notification_token');
+          // Retrieve or generate persistent browser token
+          let notificationToken = localStorage.getItem('spm_notification_token');
           
-          if (!spmToken) {
-            spmToken = `spm_${Math.random().toString(36).substring(2)}_${Date.now()}`;
-            localStorage.setItem('spm_notification_token', spmToken);
+          if (!notificationToken) {
+            notificationToken = `spm_${Math.random().toString(36).substring(2)}_${Date.now()}`;
+            localStorage.setItem('spm_notification_token', notificationToken);
           }
 
-          // Saves SPM token via POST /api/notifications/save-token
-          await patientEndpoints.saveNotificationToken(spmToken);
+          // Sends payload { token, platform: 'web' } to /api/notifications/save-token
+          await patientEndpoints.saveNotificationToken(notificationToken, 'web');
         } catch (err) {
           console.error("Failed to register notification token:", err);
         }
