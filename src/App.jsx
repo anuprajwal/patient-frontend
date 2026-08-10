@@ -9,6 +9,7 @@ import ProfileManagement from './components/patient/ProfileManagement';
 import { setAccountRestrictionHandler } from './services/api';
 import { ShieldAlert, ShieldX, LifeBuoy } from 'lucide-react';
 import { useNotificationToken } from './utils/useNotificationToken';
+import AppointmentDetails from './components/patient/AppointmentDetails';
 
 export default function App() {
   useNotificationToken()
@@ -79,6 +80,13 @@ export default function App() {
       );
       case 'hospitals': return <HospitalSearch />;
       case 'appointments': return <AppointmentList />;
+      case 'appointment-details': 
+        return (
+          <AppointmentDetails 
+            appointment={selectedAppointment} 
+            onBack={() => setView('appointments')} 
+          />
+        );
       case 'profile': return <ProfileManagement />;
       default: return <Dashboard setView={setView} />;
     }
