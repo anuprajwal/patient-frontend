@@ -413,7 +413,7 @@ export default function DoctorDetails({ doctor, onBack }) {
 
       // 1. Create Appointment
       const response = await patientEndpoints.createAppointment(payload);
-      const createdAppointmentId = response.data?.appointmentId || response.data?.id;
+      const createdAppointmentId = response.data.createdAppointment.id;
 
       if (!createdAppointmentId) {
         throw new Error('Appointment creation failed. Missing Appointment ID from response.');
