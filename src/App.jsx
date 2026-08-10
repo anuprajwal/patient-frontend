@@ -5,18 +5,21 @@ import DoctorSearch from './components/patient/DoctorSearch';
 import DoctorDetails from './components/patient/DoctorDetails';
 import HospitalSearch from './components/patient/HospitalSearch';
 import AppointmentList from './components/patient/AppointmentList';
+import AppointmentDetails from './components/patient/AppointmentDetails';
 import ProfileManagement from './components/patient/ProfileManagement';
 import { setAccountRestrictionHandler } from './services/api';
 import { ShieldAlert, ShieldX, LifeBuoy } from 'lucide-react';
 import { useNotificationToken } from './utils/useNotificationToken';
-import AppointmentDetails from './components/patient/AppointmentDetails';
 
 export default function App() {
-  useNotificationToken()
+  // Initialize notification token hook
+  useNotificationToken();
+
   const [view, setView] = useState('dashboard');
   const [selectedDoctor, setSelectedDoctor] = useState(null);
-  
-  // State layout container for tracking platform structural blocks [cite: 48]
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+
+  // State layout container for tracking account restrictions
   const [restriction, setRestriction] = useState(null); // null | { status: 'holded' | 'deleted', message: string }
 
   useEffect(() => {
@@ -26,9 +29,9 @@ export default function App() {
     });
   }, []);
 
-  // Isolated template interface rendered when an account restriction triggers [cite: 48]
+  // Isolated interface rendered when an account restriction triggers
   if (restriction) {
-    const isDeleted = restriction.status === 'deleted'; // [cite: 47]
+    const isDeleted = restriction.status === 'deleted';
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white border border-slate-200 w-full max-w-lg rounded-2xl shadow-xl p-8 text-center space-y-6">
@@ -67,28 +70,47 @@ export default function App() {
   }
 
   const renderActiveView = () => {
-    switch(view) {
-      case 'dashboard': return <Dashboard setView={setView} />;
-      case 'doctors': return (
-        <DoctorSearch onSelectDoctor={(doc) => {
-          setSelectedDoctor(doc);
-          setView('doctor-details');
-        }} />
-      );
-      case 'doctor-details': return (
-        <DoctorDetails doctor={selectedDoctor} onBack={() => setView('doctors')} />
-      );
-      case 'hospitals': return <HospitalSearch />;
-      case 'appointments': return <AppointmentList />;
-      case 'appointment-details': 
+    switch (view) {
+      case 'dashboard':
+        return <Dashboard setView={setView} />;
+      case 'doctors':
         return (
-          <AppointmentDetails 
-            appointment={selectedAppointment} 
-            onBack={() => setView('appointments')} 
+          <DoctorSearch
+            onSelectDoctor={(doc) => {
+              setSelectedDoctor(doc);
+              setView('doctor-details');
+            }}
           />
         );
-      case 'profile': return <ProfileManagement />;
-      default: return <Dashboard setView={setView} />;
+      case 'doctor-details':
+        return (
+          <DoctorDetails
+            doctor={selectedDoctor}
+            onBack={() => setView('doctors')}
+          />
+        );
+      case 'hospitals':
+        return <HospitalSearch />;
+      case 'appointments':
+        return (
+          <AppointmentList
+            onSelectAppointment={(app) => {
+              setSelectedAppointment(app);
+              setView('appointment-details');
+            }}
+          />
+        );
+      case 'appointment-details':
+        return (
+          <AppointmentDetails
+            appointment={selectedAppointment}
+            onBack={() => setView('appointments')}
+          />
+        );
+      case 'profile':
+        return <ProfileManagement />;
+      default:
+        return <Dashboard setView={setView} />;
     }
   };
 
