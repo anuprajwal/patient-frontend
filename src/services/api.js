@@ -105,10 +105,7 @@ export const patientEndpoints = {
     apiClient.post('/payment/verify', payload),
 
   confirmAppointment: (payload) =>
-    apiClient.put('/appointment/confirm-appointment', {
-      appointmentId: String(payload.appointmentId),
-      razorpay_order_id: payload.razorpay_order_id || null
-    }),
+    apiClient.put('/appointment/confirm-appointment', payload),
 
   // Supporting Medical Documents CRUD
   uploadAppointmentDocument: (formData) =>
