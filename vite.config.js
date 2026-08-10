@@ -7,8 +7,11 @@ export default defineConfig({
     port: 7001,
     strictPort: true,
     host: true,
-    allowedHosts: [
-      'users.docapp.co.in'
-    ]
+    allowedHosts: ['.docapp.co.in', 'users.docapp.co.in'], // Allows Vite to accept requests from your domain
+    hmr: {
+      host: 'users.docapp.co.in', // Directs the browser HMR websocket to your domain
+      protocol: 'wss', // Uses secure websockets if your site is served over HTTPS
+      clientPort: 443, // Standard HTTPS port used by Nginx/reverse proxy
+    },
   }
 });
