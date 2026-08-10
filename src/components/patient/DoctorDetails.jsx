@@ -600,7 +600,7 @@ export default function DoctorDetails({ doctor, onBack }) {
     setError('');
     
     // Doctor ID passed to backend
-    const doctorId = String(doctor.id || doctor.user_id);
+    const doctorId = Number(doctor.user_id);
 
     try {
       const targetDay = filteredDays[selectedDayIndex];
