@@ -615,7 +615,7 @@ export default function DoctorDetails({ doctor, onBack }) {
 
       // STEP 1: Create Appointment First
       const appointmentRes = await patientEndpoints.createAppointment(payload);
-      const createdAppointmentId = appointmentRes.data?.appointmentId || appointmentRes.data?.id;
+      const createdAppointmentId = appointmentRes.data.createdAppointment.id;
 
       if (!createdAppointmentId) {
         throw new Error('Failed to obtain valid Appointment ID from server.');
