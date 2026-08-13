@@ -4,6 +4,37 @@ import Loader from '../ui/Loader';
 import Alert from '../ui/Alert';
 import { ArrowLeft, User, Award, IndianRupee, Clock, Calendar, Star, ShieldCheck, CheckCircle2 } from 'lucide-react';
 
+// Helper to recursively parse multi-stringified JSON data
+const parseSlots = (rawSlots) => {
+  console.log("🔍 [DoctorDetails DEBUG] 1. Raw slots input received:", rawSlots);
+  if (!rawSlots) return [];
+
+  let data = rawSlots;
+  for (let i = 0; i < 5; i++) {
+    if (typeof data === 'string') {
+      try {
+        data = JSON.parse(data);
+        console.log(`✅ [DoctorDetails DEBUG] Successfully parsed JSON layer ${i + 1}`);
+      } catch (e) {
+        try {
+          const cleaned = data.replace(/\\"/g, '"').replace(/^"|"$/g, '');
+          data = JSON.parse(cleaned);
+          console.log(`🧹 [DoctorDetails DEBUG] Successfully parsed cleaned JSON layer ${i + 1}`);
+        } catch (err) {
+          console.error(`❌ [DoctorDetails DEBUG] Unrecoverable parse error at layer ${i + 1}:`, err);
+          break;
+        }
+      }
+    } else {
+      break;
+    }
+  }
+
+  const isArr = Array.isArray(data);
+  console.log("🔍 [DoctorDetails DEBUG] Final output is Array?:", isArr, data);
+  return isArr ? data : [];
+};
+
 export default function DoctorDetails({ doctor, onBack }) {
   const [slotsData, setSlotsData] = useState([]);
   const [reviews, setReviews] = useState([]);
@@ -26,20 +57,33 @@ export default function DoctorDetails({ doctor, onBack }) {
     const syncDoctorDetailsData = async () => {
       setLoading(true);
       setError('');
+      console.log("🚀 [DoctorDetails DEBUG] Syncing doctor details for:", doctor);
       try {
         const targetId = doctor.user_id || doctor.id;
+        console.log("🩺 [DoctorDetails DEBUG] Target doctor ID:", targetId);
         
         const slotsResponse = await patientEndpoints.showDoctorSlots(targetId);
-        let baseSlotsElement = slotsResponse.data?.slots?.[0]?.slots || slotsResponse.data?.slots || doctor.user?.doctorSlots?.slots;
+        console.log("📩 [DoctorDetails DEBUG] Raw slots API response:", slotsResponse);
 
-        if (typeof baseSlotsElement === 'string') baseSlotsElement = JSON.parse(baseSlotsElement);
-        if (Array.isArray(baseSlotsElement)) {
-          setSlotsData(baseSlotsElement.filter(day => day.slots && day.slots.length > 0));
+        const rawSlotsString = slotsResponse.data?.slots?.[0]?.slots || slotsResponse.data?.slots || doctor.user?.doctorSlots?.slots;
+        console.log("📦 [DoctorDetails DEBUG] Extracted raw slots string:", rawSlotsString);
+
+        // Parse multi-escaped JSON string into a true Array
+        const parsedSlots = parseSlots(rawSlotsString);
+        
+        if (parsedSlots.length > 0) {
+          const validDays = parsedSlots.filter(day => day.slots && day.slots.length > 0);
+          console.log("📊 [DoctorDetails DEBUG] Valid days with slots count:", validDays.length);
+          setSlotsData(validDays);
+        } else {
+          console.warn("⚠️ [DoctorDetails DEBUG] Parsed slots resulted in an empty array.");
+          setSlotsData([]);
         }
 
         const reviewsResponse = await patientEndpoints.getDoctorRating(targetId);
         setReviews(reviewsResponse.data?.reviews || reviewsResponse.data || []);
       } catch (err) {
+        console.error("❌ [DoctorDetails DEBUG] Failed to sync doctor details:", err);
         setReviews([
           { id: 1, review_text: "Outstanding system architecture setup. Extremely clear guidance.", created_at: "2026-07-20T10:30:00.000Z" }
         ]);
@@ -47,6 +91,7 @@ export default function DoctorDetails({ doctor, onBack }) {
         setLoading(false);
       }
     };
+
     if (doctor) syncDoctorDetailsData();
   }, [doctor]);
 
@@ -95,7 +140,7 @@ export default function DoctorDetails({ doctor, onBack }) {
     setError('');
     
     // Doctor ID passed to backend
-    const doctorId = Number(doctor.user_id);
+    const doctorId = Number(doctor.user_id || doctor.id);
 
     try {
       const targetDay = filteredDays[selectedDayIndex];
@@ -272,21 +317,29 @@ export default function DoctorDetails({ doctor, onBack }) {
 
           <Alert type="error" message={error} />
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {filteredDays.map((dayObj, idx) => (
-              <button
-                key={idx}
-                onClick={() => handleSelectDay(idx)}
-                className={`p-3 rounded-xl border text-left transition-all ${selectedDayIndex === idx ? 'bg-brand-600 border-brand-600 text-white shadow-md' : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'}`}
-              >
-                <span className="block text-xs font-bold capitalize opacity-80">{dayObj.day}</span>
-                <span className="block text-sm font-black mt-0.5">{dayObj.date}</span>
-                <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase mt-2 ${selectedDayIndex === idx ? 'bg-white/20 text-white' : 'bg-brand-50 text-brand-700 border border-brand-100'}`}>
-                  {dayObj.mode || 'offline'}
-                </span>
-              </button>
-            ))}
-          </div>
+          {loading ? <Loader /> : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {filteredDays.map((dayObj, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSelectDay(idx)}
+                  className={`p-3 rounded-xl border text-left transition-all ${selectedDayIndex === idx ? 'bg-brand-600 border-brand-600 text-white shadow-md' : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800'}`}
+                >
+                  <span className="block text-xs font-bold capitalize opacity-80">{dayObj.day}</span>
+                  <span className="block text-sm font-black mt-0.5">{dayObj.date}</span>
+                  <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-1.5 py-0.5 rounded uppercase mt-2 ${selectedDayIndex === idx ? 'bg-white/20 text-white' : 'bg-brand-50 text-brand-700 border border-brand-100'}`}>
+                    {dayObj.mode || 'offline'}
+                  </span>
+                </button>
+              ))}
+
+              {filteredDays.length === 0 && (
+                <p className="col-span-full text-xs text-slate-400 italic p-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl">
+                  No slots available matching selected constraints.
+                </p>
+              )}
+            </div>
+          )}
 
           {selectedDayIndex !== null && filteredDays[selectedDayIndex] && (
             <div className="border-t border-slate-100 pt-5 space-y-4">
