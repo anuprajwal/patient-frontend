@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 
 export default function AppointmentDetails({ appointment, onBack }) {
+  console.log("🚨 [DEBUG CRITICAL] AppointmentDetails component mounted/rendered!");
+  console.log("🚨 [DEBUG CRITICAL] Received appointment prop:", appointment);
   const [documents, setDocuments] = useState([]);
   const [prescription, setPrescription] = useState(null);
   const [availableSlots, setAvailableSlots] = useState([]);
