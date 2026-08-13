@@ -12,11 +12,8 @@ import {
 } from 'lucide-react';
 
 export default function AppointmentDetails({ appointment, onBack }) {
-  console.log("🚨 [DEBUG CRITICAL] AppointmentDetails component mounted/rendered!");
-  console.log("🚨 [DEBUG CRITICAL] Received appointment prop:", appointment);
   const [documents, setDocuments] = useState([]);
   const [prescription, setPrescription] = useState(null);
-  const [availableSlots, setAvailableSlots] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -30,122 +27,35 @@ export default function AppointmentDetails({ appointment, onBack }) {
   const statusMeta = getAppointmentStatusMeta(appointment?.appointment_status);
   const appType = (appointment?.appointment_type || '').toLowerCase();
 
-  // Helper to handle multi-escaped JSON strings with full debugging
-  const parseSlots = (rawSlots) => {
-    console.log("🔍 [DEBUG] 1. rawSlots received in parseSlots helper:", rawSlots);
-    console.log("🔍 [DEBUG] 1a. Type of rawSlots:", typeof rawSlots);
-
-    if (!rawSlots) {
-      console.warn("⚠️ [DEBUG] rawSlots is empty or undefined!");
-      return [];
-    }
-
-    let data = rawSlots;
-
-    for (let i = 0; i < 5; i++) {
-      if (typeof data === 'string') {
-        console.log(`🔍 [DEBUG] Layer ${i + 1} parsing attempt... Data preview:`, data.substring(0, 80));
-        try {
-          data = JSON.parse(data);
-          console.log(`✅ [DEBUG] Layer ${i + 1} parsed successfully. New type:`, typeof data);
-        } catch (e) {
-          console.warn(`⚠️ [DEBUG] Standard JSON.parse failed at layer ${i + 1}:`, e.message);
-          try {
-            const cleaned = data.replace(/\\"/g, '"').replace(/^"|"$/g, '');
-            console.log(`🧹 [DEBUG] Cleaned data preview:`, cleaned.substring(0, 80));
-            data = JSON.parse(cleaned);
-            console.log(`✅ [DEBUG] Cleaned parsing succeeded at layer ${i + 1}.`);
-          } catch (err) {
-            console.error(`❌ [DEBUG] Unrecoverable parse error at layer ${i + 1}:`, err.message);
-            break;
-          }
-        }
-      } else {
-        console.log(`🎉 [DEBUG] Parsing complete at layer ${i}. Final type is object/array.`);
-        break;
-      }
-    }
-
-    const isArr = Array.isArray(data);
-    console.log("🔍 [DEBUG] Is final parsed result an Array?", isArr);
-    if (isArr) {
-      console.log("📊 [DEBUG] Total days parsed in slots:", data.length);
-      console.log("📊 [DEBUG] First day sample:", data[0]);
-    } else {
-      console.error("❌ [DEBUG] Parsed slots did NOT result in an array. Actual value:", data);
-    }
-
-    return isArr ? data : [];
-  };
-
   const syncAppointmentExtraData = async () => {
-    console.log("🚀 [DEBUG] Starting syncAppointmentExtraData()...");
-    console.log("📋 [DEBUG] Incoming appointment prop:", appointment);
-
-    if (!appointment?.id) {
-      console.warn("⚠️ [DEBUG] appointment.id missing! Aborting extra data fetch.");
-      return;
-    }
-
+    if (!appointment?.id) return;
     setLoading(true);
     setError('');
-
     try {
-      // 1. Fetch Documents
-      console.log("📡 [DEBUG] Fetching appointment documents for ID:", appointment.id);
+      // 1. Fetch Documents attached to this appointment
       const docRes = await patientEndpoints.getDocumentsForAppointment(appointment.id);
-      console.log("📩 [DEBUG] Raw Documents response:", docRes);
       setDocuments(docRes.data?.documents || docRes.data || []);
 
       // 2. Fetch Prescription
-      console.log("📡 [DEBUG] Fetching prescriptions for ID:", appointment.id);
       const presRes = await patientEndpoints.getPrescriptionForAppointment(appointment.id);
-      console.log("📩 [DEBUG] Raw Prescription response:", presRes);
       setPrescription(presRes.data?.prescription || presRes.data || null);
-
-      // 3. Fetch Doctor Slots
-      const doctorId = appointment.doctor_id || doctor.id || doctor.user_id;
-      console.log("🩺 [DEBUG] Resolved Doctor ID for slots:", doctorId);
-
-      if (doctorId && patientEndpoints.getDoctorSlots) {
-        console.log("📡 [DEBUG] Calling patientEndpoints.getDoctorSlots(" + doctorId + ")...");
-        const slotRes = await patientEndpoints.getDoctorSlots(doctorId);
-        console.log("📩 [DEBUG] Raw API Slot Response:", slotRes);
-        console.log("📩 [DEBUG] slotRes.data:", slotRes.data);
-
-        const slotsArray = slotRes.data?.slots || slotRes.data || [];
-        console.log("📩 [DEBUG] Extracted slotsArray:", slotsArray);
-
-        const rawSlots = slotsArray[0]?.slots || '';
-        console.log("📩 [DEBUG] Extracted rawSlots string field:", rawSlots);
-
-        const parsedResult = parseSlots(rawSlots);
-        console.log("💾 [DEBUG] Setting availableSlots state with:", parsedResult);
-        setAvailableSlots(parsedResult);
-      } else {
-        console.warn("⚠️ [DEBUG] Missing doctorId or patientEndpoints.getDoctorSlots method!");
-      }
     } catch (err) {
-      console.error("❌ [DEBUG] Error in syncAppointmentExtraData():", err);
+      /* Silent handling for missing sub-resources */
     } finally {
       setLoading(false);
-      console.log("🏁 [DEBUG] Finished syncAppointmentExtraData()");
     }
   };
 
   useEffect(() => {
-    console.log("🔄 [DEBUG] useEffect triggered due to appointment prop change.");
     syncAppointmentExtraData();
   }, [appointment]);
 
   // Fetch Clinic Address using doctor's user_id
   const handleFetchAddress = async () => {
     const doctorUserId = doctor.user_id || doctor.id || appointment.doctor_id;
-    console.log("📍 [DEBUG] Fetching address for Doctor User ID:", doctorUserId);
     setFetchingAddress(true);
     try {
       const res = await patientEndpoints.getDoctorAddressByUserId(doctorUserId);
-      console.log("📩 [DEBUG] Raw address response:", res);
       const addresses = res.data?.addresses || res.data?.address || res.data || [];
       const primaryAddress = Array.isArray(addresses) ? addresses[0] : addresses;
 
@@ -154,7 +64,6 @@ export default function AppointmentDetails({ appointment, onBack }) {
         address: primaryAddress
       });
     } catch (err) {
-      console.error("❌ [DEBUG] Address fetch failed:", err);
       alert("Failed to retrieve clinic address from server.");
     } finally {
       setFetchingAddress(false);
@@ -164,7 +73,6 @@ export default function AppointmentDetails({ appointment, onBack }) {
   const handleDocumentUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    console.log("📤 [DEBUG] Uploading file:", file.name);
     setUploadingDoc(true);
     const fd = new FormData();
     fd.append('appointment_id', String(appointment.id));
@@ -172,10 +80,8 @@ export default function AppointmentDetails({ appointment, onBack }) {
 
     try {
       await patientEndpoints.uploadAppointmentDocument(fd);
-      console.log("✅ [DEBUG] Upload successful. Syncing data...");
       syncAppointmentExtraData();
     } catch (err) {
-      console.error("❌ [DEBUG] Document upload failed:", err);
       alert('Document upload failed.');
     } finally {
       setUploadingDoc(false);
@@ -184,13 +90,10 @@ export default function AppointmentDetails({ appointment, onBack }) {
 
   const handleDocumentDelete = async (documentId) => {
     if (!confirm("Permanently delete this medical document?")) return;
-    console.log("🗑️ [DEBUG] Deleting document ID:", documentId);
     try {
       await patientEndpoints.deleteAppointmentDocument(documentId);
-      console.log("✅ [DEBUG] Delete successful. Syncing data...");
       syncAppointmentExtraData();
     } catch (err) {
-      console.error("❌ [DEBUG] Document delete failed:", err);
       alert('Failed to delete document.');
     }
   };
@@ -327,53 +230,6 @@ export default function AppointmentDetails({ appointment, onBack }) {
                   Payment Mode: <strong className="text-slate-800">{appointment.payment_mode}</strong>
                 </p>
               </div>
-            </div>
-
-            {/* Available Doctor Schedule / Slots */}
-            <div className="space-y-3 pt-2">
-              <span className="text-xs font-extrabold text-slate-400 uppercase tracking-wider block flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-brand-600" /> Doctor's Availability Schedule
-              </span>
-              
-              {availableSlots.length > 0 ? (
-                <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
-                  {availableSlots.map((dayData, idx) => (
-                    <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
-                      <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5">
-                        <span className="text-xs font-bold text-slate-800 capitalize flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-brand-500"></span>
-                          {dayData.day} ({dayData.date})
-                        </span>
-                        {dayData.mode && (
-                          <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md bg-slate-200 text-slate-700">
-                            {dayData.mode}
-                          </span>
-                        )}
-                      </div>
-
-                      {dayData.slots && dayData.slots.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5 pt-1">
-                          {dayData.slots.map((s, slotIdx) => (
-                            <span 
-                              key={slotIdx}
-                              className="inline-flex items-center gap-1 bg-white border border-slate-200 text-slate-700 text-[11px] font-semibold px-2 py-1 rounded-md shadow-2xs"
-                            >
-                              <Clock className="w-3 h-3 text-slate-400" />
-                              {s.start} - {s.end}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-[11px] text-slate-400 italic">No available slots for this date.</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-400 text-xs italic">
-                  No availability slots listed for this doctor.
-                </div>
-              )}
             </div>
 
             {/* Prescriptions Section */}
