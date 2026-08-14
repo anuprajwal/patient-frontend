@@ -152,7 +152,7 @@ export default function DoctorDetails({ doctor, onBack }) {
         payment_mode: paymentMode
       };
 
-      // STEP 1: Create Appointment (which returns appointment details and order info)
+      // STEP 1: Create Appointment (receives appointment info + order credentials)
       const appointmentRes = await patientEndpoints.createAppointment(payload);
       const resData = appointmentRes.data;
       
@@ -165,17 +165,13 @@ export default function DoctorDetails({ doctor, onBack }) {
 
       // PATH A: CASH / OFFLINE PAYMENT
       if (paymentMode === 'cash') {
-        await patientEndpoints.confirmAppointment({
-          appointmentId: String(createdAppointmentId),
-          razorpay_order_id: null
-        });
-        setBookingSuccess(`Appointment #${createdAppointmentId} created and confirmed for Cash Payment!`);
+        setBookingSuccess(`Appointment #${createdAppointmentId} scheduled successfully for Cash Payment!`);
         resetSelection();
         setSubmittingBooking(false);
         return;
       }
 
-      // PATH B: ONLINE / CARD PAYMENT (Use order details from createAppointment response)
+      // PATH B: ONLINE / CARD PAYMENT
       if (paymentMode === 'card') {
         if (!orderId) {
           throw new Error('Failed to retrieve Razorpay Order ID from server response.');
@@ -185,7 +181,7 @@ export default function DoctorDetails({ doctor, onBack }) {
           throw new Error('Razorpay SDK script not loaded in index.html.');
         }
 
-        // STEP 2: Configure and Launch Razorpay Modal
+        // Configure and Launch Razorpay Modal
         const options = {
           key: key || import.meta.env.VITE_RAZORPAY_KEY_ID,
           amount: totalAmount,
@@ -195,7 +191,7 @@ export default function DoctorDetails({ doctor, onBack }) {
           order_id: orderId,
           handler: async function (razorpayResponse) {
             try {
-              // STEP 3: Verify Payment Signature
+              // Verify payment and update appointment status within a single transaction on backend
               const verifyRes = await patientEndpoints.verifyPayment({
                 razorpay_order_id: razorpayResponse.razorpay_order_id,
                 razorpay_payment_id: razorpayResponse.razorpay_payment_id,
@@ -203,18 +199,13 @@ export default function DoctorDetails({ doctor, onBack }) {
               });
 
               if (verifyRes.data?.success) {
-                // STEP 4: Confirm Appointment
-                await patientEndpoints.confirmAppointment({
-                  appointmentId: String(createdAppointmentId),
-                  razorpay_order_id: razorpayResponse.razorpay_order_id
-                });
                 setBookingSuccess(`Payment verified! Appointment #${createdAppointmentId} is confirmed.`);
                 resetSelection();
               } else {
-                setError('Payment verification failed. Invalid signature.');
+                setError(verifyRes.data?.message || 'Payment verification failed.');
               }
             } catch (err) {
-              setError('Payment verification request failed.');
+              setError(err.response?.data?.message || 'Payment verification request failed.');
             } finally {
               setSubmittingBooking(false);
             }
