@@ -139,7 +139,6 @@ export default function DoctorDetails({ doctor, onBack }) {
     setSubmittingBooking(true);
     setError('');
     
-    // Doctor ID passed to backend
     const doctorId = Number(doctor.user_id || doctor.id);
 
     try {
@@ -153,9 +152,12 @@ export default function DoctorDetails({ doctor, onBack }) {
         payment_mode: paymentMode
       };
 
-      // STEP 1: Create Appointment First
+      // STEP 1: Create Appointment (which returns appointment details and order info)
       const appointmentRes = await patientEndpoints.createAppointment(payload);
-      const createdAppointmentId = appointmentRes.data.createdAppointment.id;
+      const resData = appointmentRes.data;
+      
+      const createdAppointmentId = resData.createdAppointment?.id || resData.id;
+      const { orderId, amount: totalAmount, key } = resData;
 
       if (!createdAppointmentId) {
         throw new Error('Failed to obtain valid Appointment ID from server.');
@@ -173,38 +175,27 @@ export default function DoctorDetails({ doctor, onBack }) {
         return;
       }
 
-      // PATH B: ONLINE / CARD PAYMENT (Create Order & Launch Razorpay)
+      // PATH B: ONLINE / CARD PAYMENT (Use order details from createAppointment response)
       if (paymentMode === 'card') {
-        const consultationFee = Number(doctor.consultation_fee) || 500;
-        
-        // STEP 2: Create Order via /api/payment/order
-        const orderRes = await patientEndpoints.createPaymentOrder({
-          amount: consultationFee,
-          appointmentId: createdAppointmentId,
-          doctorId: doctorId
-        });
-
-        const { orderId, amount: totalPaise, key } = orderRes.data;
-
         if (!orderId) {
-          throw new Error('Failed to create Razorpay Order ID.');
+          throw new Error('Failed to retrieve Razorpay Order ID from server response.');
         }
 
         if (!window.Razorpay) {
           throw new Error('Razorpay SDK script not loaded in index.html.');
         }
 
-        // STEP 3: Configure and Launch Razorpay Modal
+        // STEP 2: Configure and Launch Razorpay Modal
         const options = {
           key: key || import.meta.env.VITE_RAZORPAY_KEY_ID,
-          amount: totalPaise,
+          amount: totalAmount,
           currency: "INR",
           name: "DocApp Healthcare",
-          description: `Appointment with ${doctor.user?.username || 'Doctor'}`,
+          description: `Appointment with ${doctor.user?.username || doctor.username || 'Doctor'}`,
           order_id: orderId,
           handler: async function (razorpayResponse) {
             try {
-              // STEP 4: Verify Payment Signature
+              // STEP 3: Verify Payment Signature
               const verifyRes = await patientEndpoints.verifyPayment({
                 razorpay_order_id: razorpayResponse.razorpay_order_id,
                 razorpay_payment_id: razorpayResponse.razorpay_payment_id,
@@ -212,7 +203,7 @@ export default function DoctorDetails({ doctor, onBack }) {
               });
 
               if (verifyRes.data?.success) {
-                // STEP 5: Confirm Appointment
+                // STEP 4: Confirm Appointment
                 await patientEndpoints.confirmAppointment({
                   appointmentId: String(createdAppointmentId),
                   razorpay_order_id: razorpayResponse.razorpay_order_id
@@ -229,9 +220,9 @@ export default function DoctorDetails({ doctor, onBack }) {
             }
           },
           prefill: {
-            name: doctor.user?.username || "",
-            email: doctor.user?.email || "",
-            contact: doctor.user?.phone_number || ""
+            name: doctor.user?.username || doctor.username || "",
+            email: doctor.user?.email || doctor.email || "",
+            contact: doctor.user?.phone_number || doctor.phone_number || ""
           },
           theme: { color: "#2563eb" },
           modal: {
@@ -273,21 +264,27 @@ export default function DoctorDetails({ doctor, onBack }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm text-center space-y-4">
-            {doctor.profile_picture ? (
-              <img src={doctor.profile_picture} alt={doctor.user?.username} className="w-24 h-24 rounded-full object-cover mx-auto border-2 border-slate-100 shadow-sm" />
+            {doctor.profile_picture || doctor.doctorProfile?.profile_picture ? (
+              <img 
+                src={doctor.profile_picture || doctor.doctorProfile?.profile_picture} 
+                alt={doctor.user?.username || doctor.username} 
+                className="w-24 h-24 rounded-full object-cover mx-auto border-2 border-slate-100 shadow-sm" 
+              />
             ) : (
-              <div className="w-24 h-24 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mx-auto"><User className="w-10 h-10" /></div>
+              <div className="w-24 h-24 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mx-auto">
+                <User className="w-10 h-10" />
+              </div>
             )}
             <div>
               <h3 className="text-lg font-extrabold text-slate-900 flex items-center justify-center gap-1">
-                {doctor.user?.username || 'Dr. Practitioner'} {doctor.verified_status && <ShieldCheck className="w-4 h-4 text-brand-500" />}
+                {doctor.user?.username || doctor.username || 'Dr. Practitioner'} {(doctor.verified_status || doctor.doctorProfile?.verified_status) && <ShieldCheck className="w-4 h-4 text-brand-500" />}
               </h3>
-              <p className="text-brand-600 font-bold text-xs mt-0.5">{doctor.specialization || 'Clinical Expert'}</p>
+              <p className="text-brand-600 font-bold text-xs mt-0.5">{doctor.specialization || doctor.doctorProfile?.specialization || 'Clinical Expert'}</p>
             </div>
             <div className="border-t border-slate-100 pt-4 flex flex-col gap-2.5 text-xs font-semibold text-slate-600 text-left">
-              <div className="flex items-center gap-3"><Award className="w-4 h-4 text-slate-400" /> <span>{doctor.experience_years || 0} Years Active Experience</span></div>
-              <div className="flex items-center gap-3"><IndianRupee className="w-4 h-4 text-slate-400" /> <span className="text-slate-900 font-bold">₹{doctor.consultation_fee} Base Fee</span></div>
-              <div className="flex items-center gap-3"><Clock className="w-4 h-4 text-slate-400" /> <span>{doctor.appointment_time || 45} Min Slots</span></div>
+              <div className="flex items-center gap-3"><Award className="w-4 h-4 text-slate-400" /> <span>{doctor.experience_years || doctor.doctorProfile?.experience_years || 0} Years Active Experience</span></div>
+              <div className="flex items-center gap-3"><IndianRupee className="w-4 h-4 text-slate-400" /> <span className="text-slate-900 font-bold">₹{doctor.consultation_fee || doctor.doctorProfile?.consultation_fee || 0} Base Fee</span></div>
+              <div className="flex items-center gap-3"><Clock className="w-4 h-4 text-slate-400" /> <span>{doctor.appointment_time || doctor.doctorProfile?.appointment_time || 45} Min Slots</span></div>
             </div>
           </div>
 

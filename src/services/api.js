@@ -98,8 +98,6 @@ export const patientEndpoints = {
   createAppointment: (payload) =>
     apiClient.post('/appointment/create-appointment', payload),
     
-  createPaymentOrder: (payload) =>
-    apiClient.post('/payment/order', payload),
 
   verifyPayment: (payload) =>
     apiClient.post('/payment/verify', payload),
