@@ -6,7 +6,7 @@
 export const getAppointmentStatusMeta = (status) => {
   const normalized = (status || '').toLowerCase();
   
-  if (normalized === 'completed' || normalized === 'finished') {
+  if (normalized === 'closed') {
     return {
       label: 'Appointment Completed',
       badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -14,14 +14,6 @@ export const getAppointmentStatusMeta = (status) => {
     };
   }
   
-  if (normalized === 'in_progress' || normalized === 'ongoing') {
-    return {
-      label: 'In Progress',
-      badgeClass: 'bg-blue-50 text-blue-700 border-blue-200 animate-pulse',
-      type: 'in_progress'
-    };
-  }
-
   return {
     label: 'Not Yet Completed',
     badgeClass: 'bg-amber-50 text-amber-700 border-amber-200',
