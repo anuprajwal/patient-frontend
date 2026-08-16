@@ -91,7 +91,14 @@ export default function App() {
           />
         );
       case 'hospitals':
-        return <HospitalSearch />;
+        return (
+        <HospitalSearch
+            onSelectHospital={(hospital) => {
+              setSelectedHospital(hospital);
+              setView('hospital-details');
+            }}
+          />
+        );
       case 'hospital-details':
         return (
           <HospitalDetails
