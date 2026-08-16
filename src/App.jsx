@@ -6,6 +6,7 @@ import DoctorDetails from './components/patient/DoctorDetails';
 import HospitalSearch from './components/patient/HospitalSearch';
 import AppointmentList from './components/patient/AppointmentList';
 import AppointmentDetails from './components/patient/AppointmentDetails';
+import HospitalDetails from './components/patient/HospitalDetails';
 import ProfileManagement from './components/patient/ProfileManagement';
 import { setAccountRestrictionHandler } from './services/api';
 import { ShieldAlert, ShieldX, LifeBuoy } from 'lucide-react';
@@ -91,6 +92,17 @@ export default function App() {
         );
       case 'hospitals':
         return <HospitalSearch />;
+      case 'hospital-details':
+        return (
+          <HospitalDetails
+            hospital={selectedHospital}
+            onBack={() => setView('hospitals')}
+            onSelectDoctor={(doctor) => {
+              setSelectedDoctor(doctor);
+              setView('doctor-details');
+            }}
+          />
+        );
       case 'appointments':
         return (
           <AppointmentList
