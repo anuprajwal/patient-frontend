@@ -171,6 +171,34 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+
+export const setAccountRestrictionHandler = (onRestricted) => {
+  apiClient.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      const errorMsg = error.response?.data?.message || '';
+      
+      if (error.response?.status === 403 && (errorMsg.includes('hold') || errorMsg.includes('deleted'))) {
+        onRestricted({
+          status: errorMsg.includes('deleted') ? 'deleted' : 'holded',
+          message: errorMsg
+        });
+        return new Promise(() => {});
+      }
+
+      if (
+        error.response?.status === 401 || 
+        errorMsg.includes('jwt expired') || 
+        errorMsg.includes('Invalid or expired admin token')
+      ) {
+        deleteAuthCookiesAndRedirect();
+      }
+      return Promise.reject(error);
+    }
+  );
+};
+
+
 export const patientEndpoints = {
   // Discovery & Doctor Portfolio
   filterDoctors: (specialization = '') => 
