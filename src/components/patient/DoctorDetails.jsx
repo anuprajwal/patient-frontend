@@ -148,7 +148,7 @@ export default function DoctorDetails({ doctor, onBack }) {
         date: targetDay.date,
         start: selectedSlot.start,
         end: selectedSlot.end,
-        type: chosenMode === 'online' ? 'online_video' : 'offline_walkin',
+        type: chosenMode === 'online' ? 'online_video' : 'offline',
         payment_mode: paymentMode
       };
 
@@ -348,7 +348,7 @@ export default function DoctorDetails({ doctor, onBack }) {
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4 mt-4">
                   <span className="text-xs font-bold text-slate-900 block">Configure Booking Parameters</span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {String(filteredDays[selectedDayIndex].mode).toLowerCase() === 'hybrid' ? (
+                    {(!filteredDays[selectedDayIndex].mode || String(filteredDays[selectedDayIndex].mode).toLowerCase() === 'hybrid') ? (
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase">Consultation Mode Variant</label>
                         <select
@@ -356,6 +356,7 @@ export default function DoctorDetails({ doctor, onBack }) {
                           onChange={(e) => { 
                             setChosenMode(e.target.value); 
                             if (e.target.value === 'online') setPaymentMode('card');
+                            else if (e.target.value === 'offline') setPaymentMode('cash');
                             else setPaymentMode('');
                           }}
                           className="mt-1 w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold focus:outline-none"
