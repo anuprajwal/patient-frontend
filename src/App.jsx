@@ -18,6 +18,7 @@ export default function App() {
 
   const [view, setView] = useState('dashboard');
   const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [selectedHospital, setSelectedHospital] = useState(null);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
 
   // State layout container for tracking account restrictions
