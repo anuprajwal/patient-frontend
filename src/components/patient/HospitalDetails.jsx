@@ -28,8 +28,8 @@ export default function HospitalDetails({ hospital, onBack, onSelectDoctor }) {
   const [totalDoctors, setTotalDoctors] = useState(0);
 
   useEffect(() => {
-    if (hospital?.id) {
-      fetchDoctors(hospital.id, offset);
+    if (hospital?.user_id) {
+      fetchDoctors(hospital.user_id, offset);
     }
   }, [hospital, offset]);
 
