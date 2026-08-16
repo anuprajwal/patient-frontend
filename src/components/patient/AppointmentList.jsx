@@ -47,7 +47,7 @@ export default function AppointmentList({ onSelectAppointment }) {
         </span>
       );
     }
-    if (s === 'completed') {
+    if (s === 'closed') {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-blue-50 text-blue-700 border border-blue-200">
           <CheckCircle2 className="w-3.5 h-3.5" /> Completed
