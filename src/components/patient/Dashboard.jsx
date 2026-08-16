@@ -5,7 +5,6 @@ export default function Dashboard({ setView }) {
   const cards = [
     { title: 'Search Specialists', desc: 'Find certified healthcare practitioners and view execution slot parameters.', action: 'doctors', icon: Search, color: 'bg-blue-500' },
     { title: 'Discover Hospitals', desc: 'Locate local clinics, treatment systems, and check physical operational profiles.', action: 'hospitals', icon: Building2, color: 'bg-indigo-500' },
-    { title: 'Consultation Pipeline', desc: 'Track your pending medical bookings, active history records, and treatment updates.', action: 'appointments', icon: Calendar, color: 'bg-emerald-500' },
     { title: 'Identity & Compliance', desc: 'Update demographic constraints, manage multi-clinic addresses, and verify multi-step OTP credentials.', action: 'profile', icon: User, color: 'bg-purple-500' }
   ];
 

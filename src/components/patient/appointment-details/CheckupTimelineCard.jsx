@@ -1,7 +1,6 @@
-// src/components/patient/appointment-details/CheckupTimelineCard.jsx
 
 import React from 'react';
-import { GitBranch, Calendar, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
 
 export default function CheckupTimelineCard({ checkups }) {
   if (!checkups || checkups.length === 0) return null;
@@ -9,7 +8,6 @@ export default function CheckupTimelineCard({ checkups }) {
   return (
     <div className="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-6 shadow-sm space-y-4">
       <div className="flex items-center gap-2">
-        <GitBranch className="w-5 h-5 text-emerald-700" />
         <h4 className="text-base font-extrabold text-emerald-950">
           Scheduled Checkup Consultations ({checkups.length})
         </h4>

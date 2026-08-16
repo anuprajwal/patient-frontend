@@ -277,5 +277,16 @@ export const patientEndpoints = {
   getDoctorAddressByUserId: (userId) => 
     apiClient.get(`/address/getAllAddress/${userId}`),
 
+  filterHospitals: (type = 'hospital', limit = 10, offset = 0, pincode = '') =>
+    apiClient.get(
+      `/filter/filter-hospitals?type=${encodeURIComponent(type)}&limit=${limit}&offset=${offset}${
+        pincode ? `&pincode=${encodeURIComponent(pincode)}` : ''
+      }`
+    ),
+
+  // Fetch Doctors belonging to an Organisation / Hospital
+  getHospitalDoctors: (organisationId, limit = 10, offset = 0) =>
+    apiClient.get(`/filter/get-hospital-doctors/${organisationId}?limit=${limit}&offset=${offset}`),
+
   logout: () => deleteAuthCookiesAndRedirect()
 };
