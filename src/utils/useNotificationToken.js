@@ -1,45 +1,6 @@
-// import { useEffect } from 'react';
-// import { patientEndpoints } from '../services/api';
-
-// export function useNotificationToken() {
-//   useEffect(() => {
-//     const registerNotificationToken = async () => {
-//       if (!('Notification' in window)) return;
-
-//       let permission = Notification.permission;
-
-//       // Prompt for permission on every visit if denied or default
-//       if (permission !== 'granted') {
-//         permission = await Notification.requestPermission();
-//       }
-
-//       if (permission === 'granted') {
-//         try {
-//           // Retrieve or generate persistent browser token
-//           let notificationToken = localStorage.getItem('spm_notification_token');
-          
-//           if (!notificationToken) {
-//             notificationToken = `spm_${Math.random().toString(36).substring(2)}_${Date.now()}`;
-//             localStorage.setItem('spm_notification_token', notificationToken);
-//           }
-
-//           // Sends payload { token, platform: 'web' } to /api/notifications/save-token
-//           await patientEndpoints.saveNotificationToken(notificationToken, 'web');
-//         } catch (err) {
-//           console.error("Failed to register notification token:", err);
-//         }
-//       }
-//     };
-
-//     registerNotificationToken();
-//   }, []);
-// }
-
-// src/utils/useNotificationPermission.js
-
 import { useEffect, useRef } from 'react';
 import { initializeApp, getApps } from 'firebase/app';
-import { getMessaging, getToken } from 'firebase/messaging';
+import { getMessaging, register, onRegistered } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -84,14 +45,13 @@ export const useNotificationToken = () => {
     }
   };
 
-  const requestAndSaveToken = async () => {
+  const requestAndRegisterMessaging = async () => {
     if (isSyncing.current || !('Notification' in window)) return;
     isSyncing.current = true;
 
     try {
       let permission = Notification.permission;
 
-      // Always prompt if not yet granted
       if (permission !== 'granted') {
         permission = await Notification.requestPermission();
       }
@@ -100,33 +60,46 @@ export const useNotificationToken = () => {
         const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
         const messaging = getMessaging(app);
 
-        const currentToken = await getToken(messaging, {
+        // Register the device instance with your VAPID key
+        await register(messaging, {
           vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
         });
-
-        if (currentToken) {
-          await saveTokenToBackend(currentToken);
-        }
       }
     } catch (error) {
-      console.warn('Notification permission or token retrieval failed:', error);
+      console.warn('Notification permission or registration failed:', error);
     } finally {
       isSyncing.current = false;
     }
   };
 
   useEffect(() => {
-    // Check and prompt on component mount
-    requestAndSaveToken();
+    // 1. Initialize Firebase and listen for the registered token/FID callback
+    const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
+    const messaging = getMessaging(app);
 
-    // Re-prompt whenever the user focuses back onto the window if permission is not granted
+    const unsubscribe = onRegistered(messaging, (token) => {
+      if (token) {
+        saveTokenToBackend(token);
+      }
+    });
+
+    // 2. Request permission and register on mount
+    requestAndRegisterMessaging();
+
+    // 3. Re-prompt when the window regains focus if permission is still pending
     const handleFocus = () => {
       if (Notification.permission !== 'granted') {
-        requestAndSaveToken();
+        requestAndRegisterMessaging();
       }
     };
 
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      if (typeof unsubscribe === 'function') {
+        unsubscribe();
+      }
+    };
   }, []);
 };
