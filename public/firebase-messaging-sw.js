@@ -11,13 +11,11 @@ firebase.initializeApp({
   messagingSenderId: "965109245557",
   appId: "965109245557:web:eb5e5c760d3b41dbda7a3c",
 });
+
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// Handle Background FCM Notifications
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message: ', payload);
-
   const data = payload.data || {};
   const notificationTitle = data.title || 'Incoming Consultation Call';
   const notificationOptions = {
@@ -27,6 +25,7 @@ messaging.onBackgroundMessage((payload) => {
     renotify: true,
     requireInteraction: true,
     data: {
+      url: self.location.origin,
       call_id: data.call_id,
       appointment_id: data.appointment_id,
       action: data.action,
@@ -37,19 +36,21 @@ messaging.onBackgroundMessage((payload) => {
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// Focus or Open App when User Clicks Notification
+// Robust notification click handler to focus or open window
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+
+  const targetUrl = event.notification.data?.url || self.location.origin;
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url && 'focus' in client) {
+        if (client.url.includes(self.location.host) && 'focus' in client) {
           return client.focus();
         }
       }
       if (clients.openWindow) {
-        return clients.openWindow('/');
+        return clients.openWindow(targetUrl);
       }
     })
   );

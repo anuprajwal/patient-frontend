@@ -159,40 +159,70 @@ export const CallProvider = ({ children, currentUserId }) => {
   // -------------------------------------------------------------
   // WebRTC Peer Connection Setup
   // -------------------------------------------------------------
-  const setupMediaAndConnection = async () => {
-    if (pc.current) {
-      pc.current.close();
+  // Inside src/context/CallContext.jsx -> replace setupMediaAndConnection()
+
+const setupMediaAndConnection = async () => {
+  if (pc.current) {
+    pc.current.close();
+  }
+
+  pc.current = new RTCPeerConnection(RTC_CONFIG);
+  remoteStream.current = new MediaStream();
+
+  // 1. Enumerate and prioritize physical laptop/desktop webcams over Phone Link
+  let selectedVideoConstraints = { width: { ideal: 1280 }, height: { ideal: 720 } };
+
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter((d) => d.kind === 'videoinput');
+
+    // Filter out phone link / virtual cameras if a built-in camera exists
+    const nativeCam = videoDevices.find(
+      (d) =>
+        !d.label.toLowerCase().includes('phone') &&
+        !d.label.toLowerCase().includes('virtual') &&
+        !d.label.toLowerCase().includes('i2403')
+    );
+
+    if (nativeCam && nativeCam.deviceId) {
+      selectedVideoConstraints = {
+        deviceId: { exact: nativeCam.deviceId },
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+      };
     }
+  } catch (err) {
+    console.warn('Could not filter video devices, using default constraints:', err);
+  }
 
-    pc.current = new RTCPeerConnection(RTC_CONFIG);
-    remoteStream.current = new MediaStream();
+  // 2. Request user media
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: selectedVideoConstraints,
+    audio: { echoCancellation: true, noiseSuppression: true },
+  });
 
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: { echoCancellation: true, noiseSuppression: true },
+  localStream.current = stream;
+
+  stream.getTracks().forEach((track) => {
+    pc.current.addTrack(track, stream);
+  });
+
+  pc.current.ontrack = (event) => {
+    event.streams[0].getTracks().forEach((track) => {
+      remoteStream.current.addTrack(track);
     });
-    localStream.current = stream;
-
-    stream.getTracks().forEach((track) => {
-      pc.current.addTrack(track, stream);
-    });
-
-    pc.current.ontrack = (event) => {
-      event.streams[0].getTracks().forEach((track) => {
-        remoteStream.current.addTrack(track);
-      });
-    };
-
-    pc.current.onconnectionstatechange = () => {
-      if (pc.current?.connectionState === 'connected') {
-        setCallState('IN_CALL');
-      } else if (['disconnected', 'failed', 'closed'].includes(pc.current?.connectionState)) {
-        terminateCallSession(false);
-      }
-    };
-
-    return pc.current;
   };
+
+  pc.current.onconnectionstatechange = () => {
+    if (pc.current?.connectionState === 'connected') {
+      setCallState('IN_CALL');
+    } else if (['disconnected', 'failed', 'closed'].includes(pc.current?.connectionState)) {
+      terminateCallSession(false);
+    }
+  };
+
+  return pc.current;
+};
 
   // -------------------------------------------------------------
   // CALLER: Start Call
