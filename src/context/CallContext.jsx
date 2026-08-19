@@ -1,6 +1,9 @@
 // src/context/CallContext.jsx
+
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { db } from '../services/firebaseClient';
+import { initializeApp, getApps } from 'firebase/app';
+import { getMessaging, onMessage } from 'firebase/messaging';
 import { doc, collection, onSnapshot } from 'firebase/firestore';
 import { callService } from '../services/callService';
 
@@ -13,6 +16,15 @@ const RTC_CONFIG = {
     { urls: 'stun:stun2.l.google.com:19302' },
   ],
   iceCandidatePoolSize: 10,
+};
+
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 export const CallProvider = ({ children, currentUserId }) => {
@@ -32,12 +44,10 @@ export const CallProvider = ({ children, currentUserId }) => {
   const screenTrack = useRef(null);
   const timerRef = useRef(null);
 
-  // Firestore Snapshot Unsubscribers
   const unsubCallDoc = useRef(null);
   const unsubCandidates = useRef(null);
   const unsubUserCalls = useRef(null);
 
-  // Helper to extract authenticated user ID from cookie or prop
   const getUserId = () => {
     if (currentUserId) return currentUserId;
     try {
@@ -53,7 +63,49 @@ export const CallProvider = ({ children, currentUserId }) => {
   };
 
   // -------------------------------------------------------------
-  // Listen for Incoming Calls on calls/<userId>/history
+  // 1. FCM Foreground Push Notification Listener
+  // Parses: { action: 'INCOMING_CALL', call_id, call_details }
+  // -------------------------------------------------------------
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+
+    const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
+    const messaging = getMessaging(app);
+
+    const unsubscribeFCM = onMessage(messaging, (payload) => {
+      console.log('🔔 Foreground FCM Message received:', payload);
+      const data = payload.data || {};
+
+      if (data.action === 'INCOMING_CALL' && data.call_id) {
+        let details = {};
+        try {
+          details = typeof data.call_details === 'string' 
+            ? JSON.parse(data.call_details) 
+            : (data.call_details || {});
+        } catch (e) {
+          details = {};
+        }
+
+        const uid = getUserId();
+        // Trigger only if current user is indeed the callee
+        if (!uid || !details.call_to_userid || parseInt(details.call_to_userid, 10) === parseInt(uid, 10)) {
+          setIncomingCallData({
+            call_id: data.call_id,
+            appointment_id: data.appointment_id,
+            ...details,
+          });
+          setCallState((prev) => (prev === 'IDLE' ? 'RINGING_IN' : prev));
+        }
+      }
+    });
+
+    return () => {
+      if (typeof unsubscribeFCM === 'function') unsubscribeFCM();
+    };
+  }, [currentUserId]);
+
+  // -------------------------------------------------------------
+  // 2. Firestore Realtime Fallback Listener on calls/<userId>/history
   // -------------------------------------------------------------
   useEffect(() => {
     const uid = getUserId();
@@ -66,7 +118,6 @@ export const CallProvider = ({ children, currentUserId }) => {
           const data = change.doc.data();
           const callId = change.doc.id;
 
-          // Check if it is a ringing incoming call and not expired
           if (
             data.call_status === 'Ringing' &&
             data.call_request &&
@@ -90,7 +141,9 @@ export const CallProvider = ({ children, currentUserId }) => {
     };
   }, [currentUserId]);
 
-  // Duration Timer Counter
+  // -------------------------------------------------------------
+  // Call Duration Timer
+  // -------------------------------------------------------------
   useEffect(() => {
     if (callState === 'IN_CALL') {
       timerRef.current = setInterval(() => {
@@ -104,7 +157,7 @@ export const CallProvider = ({ children, currentUserId }) => {
   }, [callState]);
 
   // -------------------------------------------------------------
-  // Initialize WebRTC Peer Connection & Acquire Streams
+  // WebRTC Peer Connection Setup
   // -------------------------------------------------------------
   const setupMediaAndConnection = async () => {
     if (pc.current) {
@@ -133,9 +186,7 @@ export const CallProvider = ({ children, currentUserId }) => {
     pc.current.onconnectionstatechange = () => {
       if (pc.current?.connectionState === 'connected') {
         setCallState('IN_CALL');
-      } else if (
-        ['disconnected', 'failed', 'closed'].includes(pc.current?.connectionState)
-      ) {
+      } else if (['disconnected', 'failed', 'closed'].includes(pc.current?.connectionState)) {
         terminateCallSession(false);
       }
     };
@@ -157,7 +208,7 @@ export const CallProvider = ({ children, currentUserId }) => {
       const offer = await peerConn.createOffer();
       await peerConn.setLocalDescription(offer);
 
-      // Step 2: Send Offer to Backend
+      // Step 2: Post to backend to trigger Firestore write & FCM push[cite: 4]
       const res = await callService.initialiseCall(appointmentId, {
         sdp: offer.sdp,
         type: offer.type,
@@ -167,7 +218,7 @@ export const CallProvider = ({ children, currentUserId }) => {
       setActiveCallId(call_id);
       setCallState('RINGING_OUT');
 
-      // Step 3: Stream Local ICE Candidates -> Backend
+      // Step 3: Stream local ICE candidates to backend[cite: 8]
       peerConn.onicecandidate = (event) => {
         if (event.candidate) {
           callService.addOfferCandidate(call_id, event.candidate).catch((err) =>
@@ -176,7 +227,7 @@ export const CallProvider = ({ children, currentUserId }) => {
         }
       };
 
-      // Step 4: Listen to call_history/<call_id>
+      // Step 4: Listen for Answer on call_history/<call_id>
       const callDocRef = doc(db, 'call_history', call_id);
       unsubCallDoc.current = onSnapshot(callDocRef, async (snapshot) => {
         const data = snapshot.data();
@@ -184,19 +235,17 @@ export const CallProvider = ({ children, currentUserId }) => {
 
         setActiveCallDetails(data.call_request);
 
-        // Callee Answered
         if (data.call_status === 'Answered' && data.answer && !peerConn.currentRemoteDescription) {
           await peerConn.setRemoteDescription(new RTCSessionDescription(data.answer));
           setCallState('IN_CALL');
         }
 
-        // Call Finished / Rejected
         if (['Rejected', 'Call Completed'].includes(data.call_status)) {
           terminateCallSession(false);
         }
       });
 
-      // Step 5: Listen for Answer ICE Candidates from Callee
+      // Step 5: Listen for Callee's ICE candidates[cite: 7]
       const answerCandidatesRef = collection(db, 'call_history', call_id, 'answerCandidates');
       unsubCandidates.current = onSnapshot(answerCandidatesRef, (snapshot) => {
         snapshot.docChanges().forEach(async (change) => {
@@ -235,7 +284,7 @@ export const CallProvider = ({ children, currentUserId }) => {
 
       const peerConn = await setupMediaAndConnection();
 
-      // Step 1: Stream Callee Local ICE Candidates -> Backend
+      // Step 1: Stream callee ICE candidates to backend[cite: 7]
       peerConn.onicecandidate = (event) => {
         if (event.candidate) {
           callService.addAnswerCandidate(callId, event.candidate).catch((err) =>
@@ -244,7 +293,7 @@ export const CallProvider = ({ children, currentUserId }) => {
         }
       };
 
-      // Step 2: Fetch Caller SDP Offer
+      // Step 2: Fetch Caller SDP Offer[cite: 10]
       let offerSdp = incomingCallData.offer;
       if (!offerSdp) {
         const offerRes = await callService.getCallOffer(callId);
@@ -253,11 +302,11 @@ export const CallProvider = ({ children, currentUserId }) => {
 
       await peerConn.setRemoteDescription(new RTCSessionDescription(offerSdp));
 
-      // Step 3: Generate and Set SDP Answer
+      // Step 3: Create & Set SDP Answer
       const answer = await peerConn.createAnswer();
       await peerConn.setLocalDescription(answer);
 
-      // Step 4: Transmit SDP Answer to Backend
+      // Step 4: Transmit answer to backend[cite: 5]
       await callService.receiveCall(callId, {
         sdp: answer.sdp,
         type: answer.type,
@@ -265,7 +314,7 @@ export const CallProvider = ({ children, currentUserId }) => {
 
       setCallState('IN_CALL');
 
-      // Step 5: Listen to call_history document state
+      // Step 5: Listen to call status changes
       const callDocRef = doc(db, 'call_history', callId);
       unsubCallDoc.current = onSnapshot(callDocRef, (snapshot) => {
         const data = snapshot.data();
@@ -274,7 +323,7 @@ export const CallProvider = ({ children, currentUserId }) => {
         }
       });
 
-      // Step 6: Listen for Caller's ICE Candidates
+      // Step 6: Listen for Caller's ICE candidates[cite: 8]
       const offerCandidatesRef = collection(db, 'call_history', callId, 'offerCandidates');
       unsubCandidates.current = onSnapshot(offerCandidatesRef, (snapshot) => {
         snapshot.docChanges().forEach(async (change) => {
@@ -298,7 +347,7 @@ export const CallProvider = ({ children, currentUserId }) => {
   };
 
   // -------------------------------------------------------------
-  // CALLEE: Reject Call
+  // CALLEE: Reject Call[cite: 6]
   // -------------------------------------------------------------
   const rejectCall = async () => {
     if (incomingCallData?.call_id) {
@@ -313,7 +362,7 @@ export const CallProvider = ({ children, currentUserId }) => {
   };
 
   // -------------------------------------------------------------
-  // EITHER PARTY: End Call
+  // End Call[cite: 9]
   // -------------------------------------------------------------
   const endCall = async () => {
     if (activeCallId) {
@@ -327,7 +376,6 @@ export const CallProvider = ({ children, currentUserId }) => {
   };
 
   const terminateCallSession = (isLocalAction = true) => {
-    // Unsubscribe Firestore listeners
     if (unsubCallDoc.current) {
       unsubCallDoc.current();
       unsubCallDoc.current = null;
@@ -337,7 +385,6 @@ export const CallProvider = ({ children, currentUserId }) => {
       unsubCandidates.current = null;
     }
 
-    // Stop Media Tracks
     if (localStream.current) {
       localStream.current.getTracks().forEach((track) => track.stop());
       localStream.current = null;
@@ -351,7 +398,6 @@ export const CallProvider = ({ children, currentUserId }) => {
       remoteStream.current = null;
     }
 
-    // Close PeerConnection
     if (pc.current) {
       pc.current.close();
       pc.current = null;
@@ -366,9 +412,6 @@ export const CallProvider = ({ children, currentUserId }) => {
     setCallState('IDLE');
   };
 
-  // -------------------------------------------------------------
-  // Track Controls (Mute, Camera Flip, Screen Share)
-  // -------------------------------------------------------------
   const toggleAudio = () => {
     if (localStream.current) {
       const audioTrack = localStream.current.getAudioTracks()[0];

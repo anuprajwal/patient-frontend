@@ -11,18 +11,46 @@ firebase.initializeApp({
   messagingSenderId: "965109245557",
   appId: "965109245557:web:eb5e5c760d3b41dbda7a3c",
 });
-
+firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
-// Handle background messages
+// Handle Background FCM Notifications
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message: ', payload);
 
-  const notificationTitle = payload.notification.title;
+  const data = payload.data || {};
+  const notificationTitle = data.title || 'Incoming Consultation Call';
   const notificationOptions = {
-    body: payload.notification.body,
-    icon: payload.notification.icon || '/favicon.ico',
+    body: data.body || 'You have an incoming consultation call.',
+    icon: '/favicon.ico',
+    tag: `call-${data.call_id || Date.now()}`,
+    renotify: true,
+    requireInteraction: true,
+    data: {
+      call_id: data.call_id,
+      appointment_id: data.appointment_id,
+      action: data.action,
+      call_details: data.call_details
+    }
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// Focus or Open App when User Clicks Notification
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow('/');
+      }
+    })
+  );
 });
