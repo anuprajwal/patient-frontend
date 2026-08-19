@@ -1,3 +1,5 @@
+// src/App.jsx
+
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/ui/Navbar';
 import Dashboard from './components/patient/Dashboard';
@@ -11,6 +13,11 @@ import ProfileManagement from './components/patient/ProfileManagement';
 import { setAccountRestrictionHandler } from './services/api';
 import { ShieldAlert, ShieldX, LifeBuoy } from 'lucide-react';
 import { useNotificationToken } from './utils/useNotificationToken';
+
+// HERE THERE IS A CHANGE MADE: Active WebRTC Call Provider & Overlays
+import { CallProvider } from './context/CallContext';
+import IncomingCallModal from './components/calling/IncomingCallModal';
+import VideoCallModal from './components/calling/VideoCallModal';
 
 export default function App() {
   // Initialize notification token hook
@@ -135,11 +142,17 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <Navbar currentView={view} setView={setView} />
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {renderActiveView()}
-      </main>
-    </div>
+    // HERE THERE IS A CHANGE MADE: Wrapped tree with CallProvider and mounted calling modals
+    <CallProvider>
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        <Navbar currentView={view} setView={setView} />
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {renderActiveView()}
+        </main>
+        {/* HERE THERE IS A CHANGE MADE: Modal overlays for incoming ringing and active video room */}
+        <IncomingCallModal />
+        <VideoCallModal />
+      </div>
+    </CallProvider>
   );
 }
