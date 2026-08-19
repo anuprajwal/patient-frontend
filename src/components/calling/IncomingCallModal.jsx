@@ -1,7 +1,7 @@
 // src/components/calling/IncomingCallModal.jsx
 import React from 'react';
 import { useCall } from '../../context/CallContext';
-import { Phone, PhoneOff, User } from '../ui/Icons';
+import { Phone, PhoneOff, User } from 'lucide-react';
 
 export default function IncomingCallModal() {
   const { incomingCallData, callState, acceptCall, rejectCall } = useCall();
