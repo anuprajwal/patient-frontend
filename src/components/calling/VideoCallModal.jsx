@@ -118,7 +118,7 @@ export default function VideoCallModal() {
           }`}
           title={isAudioMuted ? 'Unmute Mic' : 'Mute Mic'}
         >
-          {isAudioMuted ? '🔇 Mic Off' : '🎙️ Mic On'}
+          {isAudioMuted ? 'Mic Off' : 'Mic On'}
         </button>
 
         <button
@@ -129,7 +129,7 @@ export default function VideoCallModal() {
           }`}
           title={isVideoDisabled ? 'Turn Camera On' : 'Turn Camera Off'}
         >
-          {isVideoDisabled ? '📷 Cam Off' : '📹 Cam On'}
+          {isVideoDisabled ? 'Cam Off' : 'Cam On'}
         </button>
 
         <button
@@ -140,7 +140,7 @@ export default function VideoCallModal() {
           }`}
           title="Share Screen"
         >
-          {isScreenSharing ? '🖥️ Stop Share' : '💻 Share'}
+          {isScreenSharing ? 'Stop Share' : 'Share'}
         </button>
 
         <button
