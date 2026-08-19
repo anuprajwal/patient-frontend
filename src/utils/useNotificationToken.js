@@ -21,7 +21,10 @@ export const useNotificationToken = () => {
 
   const saveTokenToBackend = async (token) => {
     const authToken = getAuthToken();
-    if (!authToken) return;
+    if (!authToken) {
+    console.log('❌ saveTokenToBackend aborted: No auth token found in cookies.');
+    return;
+  }
 
     try {
       const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.docapp.co.in';
