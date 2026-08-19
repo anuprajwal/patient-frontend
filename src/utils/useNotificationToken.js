@@ -55,7 +55,7 @@ const getAuthToken = () => {
   return match ? match[2] : null;
 };
 
-export const useNotificationPermission = () => {
+export const useNotificationToken = () => {
   const isSyncing = useRef(false);
 
   const saveTokenToBackend = async (token) => {
