@@ -288,5 +288,8 @@ export const patientEndpoints = {
   getHospitalDoctors: (organisationId, limit = 10, offset = 0) =>
     apiClient.get(`/filter/get-hospital-doctors/${organisationId}?limit=${limit}&offset=${offset}`),
 
+  saveNotificationToken: (token, platform = 'web') => 
+    apiClient.post('/notifications/save-token', { spmToken }),
+
   logout: () => deleteAuthCookiesAndRedirect()
 };
