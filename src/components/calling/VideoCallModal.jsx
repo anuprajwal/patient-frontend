@@ -1,7 +1,8 @@
 // src/components/calling/VideoCallModal.jsx
+
 import React, { useEffect, useRef } from 'react';
 import { useCall } from '../../context/CallContext';
-import { PhoneOff } from 'lucide-react';
+import { PhoneOff } from '../ui/Icons';
 
 const formatSeconds = (sec) => {
   const m = Math.floor(sec / 60).toString().padStart(2, '0');
@@ -36,9 +37,14 @@ export default function VideoCallModal() {
   }, [localStream.current, callState]);
 
   useEffect(() => {
-    if (remoteVideoRef.current && remoteStream.current) {
-      remoteVideoRef.current.srcObject = remoteStream.current;
-    }
+    const attachRemote = () => {
+      if (remoteVideoRef.current && remoteStream.current) {
+        remoteVideoRef.current.srcObject = remoteStream.current;
+      }
+    };
+    attachRemote();
+    const interval = setInterval(attachRemote, 1000);
+    return () => clearInterval(interval);
   }, [remoteStream.current, callState]);
 
   if (!['CONNECTING', 'RINGING_OUT', 'IN_CALL'].includes(callState)) {
@@ -55,7 +61,7 @@ export default function VideoCallModal() {
           </h4>
           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
             {callState === 'RINGING_OUT' && 'Ringing...'}
-            {callState === 'CONNECTING' && 'Establishing Peer Connection...'}
+            {callState === 'CONNECTING' && 'Connecting WebRTC...'}
             {callState === 'IN_CALL' && `Connected (${formatSeconds(callDuration)})`}
           </span>
         </div>
@@ -69,7 +75,6 @@ export default function VideoCallModal() {
 
       {/* Video Viewport Matrix */}
       <div className="flex-1 relative my-4 rounded-3xl overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center shadow-2xl">
-        {/* Remote Video Stream */}
         <video
           ref={remoteVideoRef}
           autoPlay
@@ -81,7 +86,7 @@ export default function VideoCallModal() {
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/70 backdrop-blur-sm text-center p-4">
             <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
             <p className="text-slate-200 text-sm font-bold">
-              {callState === 'RINGING_OUT' ? 'Waiting for participant to pick up...' : 'Securing WebRTC stream...'}
+              {callState === 'RINGING_OUT' ? 'Waiting for participant to pick up...' : 'Connecting video stream...'}
             </p>
           </div>
         )}
@@ -105,7 +110,6 @@ export default function VideoCallModal() {
 
       {/* Media Controller Bar */}
       <div className="flex items-center justify-center gap-4 bg-slate-900/90 backdrop-blur-md py-3 px-6 rounded-2xl border border-slate-800 max-w-md mx-auto shadow-xl">
-        {/* Mic Toggle */}
         <button
           type="button"
           onClick={toggleAudio}
@@ -117,7 +121,6 @@ export default function VideoCallModal() {
           {isAudioMuted ? '🔇 Mic Off' : '🎙️ Mic On'}
         </button>
 
-        {/* Camera Toggle */}
         <button
           type="button"
           onClick={toggleVideo}
@@ -129,7 +132,6 @@ export default function VideoCallModal() {
           {isVideoDisabled ? '📷 Cam Off' : '📹 Cam On'}
         </button>
 
-        {/* Screen Sharing Toggle */}
         <button
           type="button"
           onClick={toggleScreenShare}
@@ -141,7 +143,6 @@ export default function VideoCallModal() {
           {isScreenSharing ? '🖥️ Stop Share' : '💻 Share'}
         </button>
 
-        {/* End Call */}
         <button
           type="button"
           onClick={endCall}
