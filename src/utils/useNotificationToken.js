@@ -28,7 +28,7 @@ export const useNotificationToken = () => {
 
     try {
       const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.docapp.co.in';
-      const response = await fetch(`${baseUrl}/api/notifications/save-token`, {
+      const response = await fetch(`${baseUrl}/notifications/save-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
