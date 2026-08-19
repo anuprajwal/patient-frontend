@@ -20,7 +20,9 @@ export const useNotificationToken = () => {
   const isSyncing = useRef(false);
 
   const saveTokenToBackend = async (token) => {
+    console.log('🔔 Saving notification token to backend:', token);
     const authToken = getAuthToken();
+    console.log('🔑 Retrieved auth token from cookies:', authToken);
     if (!authToken) {
     console.log('❌ saveTokenToBackend aborted: No auth token found in cookies.');
     return;
