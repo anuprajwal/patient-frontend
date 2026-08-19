@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { useCall } from '../../context/CallContext';
-import { PhoneOff } from '../ui/Icons';
+import { PhoneOff } from 'lucide-react';
 
 const formatSeconds = (sec) => {
   const m = Math.floor(sec / 60).toString().padStart(2, '0');
