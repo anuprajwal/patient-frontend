@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { initializeApp, getApps } from 'firebase/app';
-import { getMessaging, register, onRegistered } from 'firebase/messaging';
+import { getMessaging, getToken } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -20,13 +20,11 @@ export const useNotificationToken = () => {
   const isSyncing = useRef(false);
 
   const saveTokenToBackend = async (token) => {
-    console.log('🔔 Saving notification token to backend:', token);
     const authToken = getAuthToken();
-    console.log('🔑 Retrieved auth token from cookies:', authToken);
     if (!authToken) {
-    console.log('❌ saveTokenToBackend aborted: No auth token found in cookies.');
-    return;
-  }
+      console.warn('[FCM] No auth_token found in cookie.');
+      return;
+    }
 
     try {
       const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://api.docapp.co.in';
@@ -42,16 +40,14 @@ export const useNotificationToken = () => {
         }),
       });
 
-      if (!response.ok) {
-        console.warn('Failed to register FCM token with server:', response.status);
-      }
+      console.log('[FCM] Backend save response:', response.status);
     } catch (err) {
-      console.error('Error saving notification token:', err);
+      console.error('[FCM] Error saving token to backend:', err);
     }
   };
 
-  const requestAndRegisterMessaging = async () => {
-    if (isSyncing.current || !('Notification' in window)) return;
+  const requestAndSaveToken = async () => {
+    if (isSyncing.current || !('Notification' in window) || !('serviceWorker' in navigator)) return;
     isSyncing.current = true;
 
     try {
@@ -65,46 +61,27 @@ export const useNotificationToken = () => {
         const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
         const messaging = getMessaging(app);
 
-        // Register the device instance with your VAPID key
-        await register(messaging, {
+        // Explicitly register the service worker from the root public directory
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+
+        const currentToken = await getToken(messaging, {
           vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
+          serviceWorkerRegistration: registration,
         });
+
+        if (currentToken) {
+          console.log('[FCM] Token retrieved successfully:', currentToken);
+          await saveTokenToBackend(currentToken);
+        }
       }
     } catch (error) {
-      console.warn('Notification permission or registration failed:', error);
+      console.error('[FCM] Token registration failed:', error);
     } finally {
       isSyncing.current = false;
     }
   };
 
   useEffect(() => {
-    // 1. Initialize Firebase and listen for the registered token/FID callback
-    const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
-    const messaging = getMessaging(app);
-
-    const unsubscribe = onRegistered(messaging, (token) => {
-      if (token) {
-        saveTokenToBackend(token);
-      }
-    });
-
-    // 2. Request permission and register on mount
-    requestAndRegisterMessaging();
-
-    // 3. Re-prompt when the window regains focus if permission is still pending
-    const handleFocus = () => {
-      if (Notification.permission !== 'granted') {
-        requestAndRegisterMessaging();
-      }
-    };
-
-    window.addEventListener('focus', handleFocus);
-    
-    return () => {
-      window.removeEventListener('focus', handleFocus);
-      if (typeof unsubscribe === 'function') {
-        unsubscribe();
-      }
-    };
+    requestAndSaveToken();
   }, []);
 };
