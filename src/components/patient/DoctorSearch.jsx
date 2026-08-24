@@ -4,6 +4,38 @@ import Loader from '../ui/Loader';
 import Alert from '../ui/Alert';
 import { Search, User, Award, IndianRupee, ArrowRight, Filter, MapPin, Mail, Phone, ShieldCheck } from 'lucide-react';
 
+// Helper to format experience from practice_start_date (or fallback to legacy experience_years)
+const formatDoctorExperience = (practiceStartDate, legacyYears) => {
+  if (practiceStartDate) {
+    const [startYear, startMonth] = practiceStartDate.slice(0, 7).split('-').map(Number);
+    if (startYear && startMonth) {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+
+      const totalMonths = (currentYear - startYear) * 12 + (currentMonth - startMonth);
+      if (totalMonths < 0) return 'Practice starts soon';
+
+      const years = Math.floor(totalMonths / 12);
+      const months = totalMonths % 12;
+
+      const yearStr = years > 0 ? `${years} ${years === 1 ? 'Year' : 'Years'}` : '';
+      const monthStr = months > 0 ? `${months} ${months === 1 ? 'Month' : 'Months'}` : '';
+
+      if (yearStr && monthStr) return `${yearStr}, ${monthStr} Experience`;
+      if (yearStr) return `${yearStr} Experience`;
+      if (monthStr) return `${monthStr} Experience`;
+      return '< 1 Month Experience';
+    }
+  }
+
+  if (legacyYears) {
+    return `${legacyYears} ${Number(legacyYears) === 1 ? 'Year' : 'Years'} Experience`;
+  }
+
+  return 'Experience not specified';
+};
+
 export default function DoctorSearch({ onSelectDoctor }) {
   const [searchName, setSearchName] = useState('');
   const [specialization, setSpecialization] = useState('');
@@ -81,8 +113,11 @@ export default function DoctorSearch({ onSelectDoctor }) {
       {loading ? <Loader /> : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {doctors.map((doc) => {
-            // Direct extraction of nested variables from array list
             const addressObj = doc.user?.address?.[0];
+            const startDate = doc.practice_start_date || doc.doctorProfile?.practice_start_date;
+            const expYears = doc.experience_years || doc.doctorProfile?.experience_years;
+            const expText = formatDoctorExperience(startDate, expYears);
+
             return (
               <div 
                 key={doc.id} 
@@ -116,7 +151,7 @@ export default function DoctorSearch({ onSelectDoctor }) {
                   {/* Enhanced Parameter Layout Data Grids */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs font-medium text-slate-600 border-t border-slate-100">
                     <div className="space-y-2">
-                      <div className="flex items-center gap-2"><Award className="w-4 h-4 text-slate-400" /> <span>{doc.experience_years || '0'} Years Experience</span></div>
+                      <div className="flex items-center gap-2"><Award className="w-4 h-4 text-slate-400" /> <span>{expText}</span></div>
                       <div className="flex items-center gap-2"><Mail className="w-4 h-4 text-slate-400" /> <span className="truncate">{doc.user?.email}</span></div>
                       <div className="flex items-center gap-2"><Phone className="w-4 h-4 text-slate-400" /> <span>{doc.user?.phone_number}</span></div>
                     </div>

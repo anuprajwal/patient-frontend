@@ -17,6 +17,38 @@ import {
   IndianRupee
 } from 'lucide-react';
 
+// Helper to format experience from practice_start_date (or fallback to legacy experience_years)
+const formatDoctorExperience = (practiceStartDate, legacyYears) => {
+  if (practiceStartDate) {
+    const [startYear, startMonth] = practiceStartDate.slice(0, 7).split('-').map(Number);
+    if (startYear && startMonth) {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+
+      const totalMonths = (currentYear - startYear) * 12 + (currentMonth - startMonth);
+      if (totalMonths < 0) return 'Practice starts soon';
+
+      const years = Math.floor(totalMonths / 12);
+      const months = totalMonths % 12;
+
+      const yearStr = years > 0 ? `${years} ${years === 1 ? 'yr' : 'yrs'}` : '';
+      const monthStr = months > 0 ? `${months} ${months === 1 ? 'mo' : 'mos'}` : '';
+
+      if (yearStr && monthStr) return `${yearStr} ${monthStr} exp`;
+      if (yearStr) return `${yearStr} exp`;
+      if (monthStr) return `${monthStr} exp`;
+      return '< 1 mo exp';
+    }
+  }
+
+  if (legacyYears) {
+    return `${legacyYears} yrs exp`;
+  }
+
+  return 'Practitioner';
+};
+
 export default function HospitalDetails({ hospital, onBack, onSelectDoctor }) {
   const [doctors, setDoctors] = useState([]);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
@@ -177,6 +209,9 @@ export default function HospitalDetails({ hospital, onBack, onSelectDoctor }) {
             {doctors.map((doc) => {
               const profile = doc.doctorProfile || doc;
               const doctorUser = doc.user || doc;
+              const practiceStartDate = profile.practice_start_date || doc.practice_start_date;
+              const legacyExp = profile.experience_years || doc.experience_years;
+              const experienceLabel = formatDoctorExperience(practiceStartDate, legacyExp);
 
               return (
                 <div
@@ -198,7 +233,7 @@ export default function HospitalDetails({ hospital, onBack, onSelectDoctor }) {
                         {profile.specialization || 'General Specialist'}
                       </p>
                       <p className="text-slate-400 text-xs mt-0.5">
-                        {profile.experience_years ? `${profile.experience_years} yrs exp` : 'Practitioner'}
+                        {experienceLabel}
                       </p>
                     </div>
                   </div>
