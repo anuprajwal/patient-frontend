@@ -1,5 +1,5 @@
 import React from 'react';
-import Loader from '../../../ui/Loader';
+import Loader from '../../ui/Loader';
 
 export default function SlotSelectionMatrix({
   loading,
