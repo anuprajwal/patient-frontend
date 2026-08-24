@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'url';
 
 export default defineConfig({
   plugins: [react()],
@@ -7,11 +8,11 @@ export default defineConfig({
     port: 7001,
     strictPort: true,
     host: true,
-    allowedHosts: ['.docapp.co.in', 'users.docapp.co.in'], // Allows Vite to accept requests from your domain
+    allowedHosts: ['users.docapp.co.in'],
     hmr: {
-      host: 'users.docapp.co.in', // Directs the browser HMR websocket to your domain
-      protocol: 'wss', // Uses secure websockets if your site is served over HTTPS
-      clientPort: 443, // Standard HTTPS port used by Nginx/reverse proxy
+      host: 'users.docapp.co.in',
+      protocol: 'wss',
+      clientPort: 443,
     },
   }
 });
