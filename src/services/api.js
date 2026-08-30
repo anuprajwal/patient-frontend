@@ -124,7 +124,7 @@ export const patientEndpoints = {
     }),
 
   submitDoctorReview: (payload) =>
-    apiClient.post('https://landing.docapp.co.in/api/reviews/doctor-review-ratings', payload),
+    apiClient.post('/reviews/doctor-review-ratings', payload),
     
   getSingleDocument: (documentId) =>
     apiClient.get(`/appointment/get-document/${documentId}`),
