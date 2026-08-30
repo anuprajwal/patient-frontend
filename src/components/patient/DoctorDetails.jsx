@@ -197,26 +197,6 @@ export default function DoctorDetails({ doctor, onBack }) {
           name: "DocApp Healthcare",
           description: `Appointment with ${doctor.user?.username || doctor.username || 'Doctor'}`,
           order_id: orderId,
-          handler: async function (razorpayResponse) {
-            try {
-              const verifyRes = await patientEndpoints.verifyPayment({
-                razorpay_order_id: razorpayResponse.razorpay_order_id,
-                razorpay_payment_id: razorpayResponse.razorpay_payment_id,
-                razorpay_signature: razorpayResponse.razorpay_signature
-              });
-
-              if (verifyRes.data?.success) {
-                setBookingSuccess(`Payment verified! Appointment #${createdAppointmentId} is confirmed.`);
-                resetSelection();
-              } else {
-                setError(verifyRes.data?.message || 'Payment verification failed.');
-              }
-            } catch (err) {
-              setError(err.response?.data?.message || 'Payment verification request failed.');
-            } finally {
-              setSubmittingBooking(false);
-            }
-          },
           prefill: {
             name: doctor.user?.username || doctor.username || "",
             email: doctor.user?.email || doctor.email || "",
