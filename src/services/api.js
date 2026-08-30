@@ -122,6 +122,9 @@ export const patientEndpoints = {
     apiClient.put(`/appointment/replace-document/${documentId}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     }),
+
+  submitDoctorReview: (payload) =>
+    apiClient.post('https://landing.docapp.co.in/api/reviews/doctor-review-ratings', payload),
     
   getSingleDocument: (documentId) =>
     apiClient.get(`/appointment/get-document/${documentId}`),
