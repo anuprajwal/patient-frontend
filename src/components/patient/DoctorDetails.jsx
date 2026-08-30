@@ -1,30 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { patientEndpoints } from '../../services/api';
 import Alert from '../ui/Alert';
+import Loader from '../ui/Loader';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 import DoctorProfileSidebar from './doctor/DoctorProfileSidebar';
 import SlotSelectionMatrix from './doctor/SlotSelectionMatrix';
 import DoctorReviewsSection from './doctor/DoctorReviewsSection';
+import { getPersistedSelection, persistSelection } from '../../utils/navigationStorage';
 
-// Helper to recursively parse multi-stringified JSON data
 const parseSlots = (rawSlots) => {
-  console.log("🔍 [DoctorDetails DEBUG] 1. Raw slots input received:", rawSlots);
   if (!rawSlots) return [];
-
   let data = rawSlots;
   for (let i = 0; i < 5; i++) {
     if (typeof data === 'string') {
       try {
         data = JSON.parse(data);
-        console.log(`✅ [DoctorDetails DEBUG] Successfully parsed JSON layer ${i + 1}`);
       } catch (e) {
         try {
           const cleaned = data.replace(/\\"/g, '"').replace(/^"|"$/g, '');
           data = JSON.parse(cleaned);
-          console.log(`🧹 [DoctorDetails DEBUG] Successfully parsed cleaned JSON layer ${i + 1}`);
         } catch (err) {
-          console.error(`❌ [DoctorDetails DEBUG] Unrecoverable parse error at layer ${i + 1}:`, err);
           break;
         }
       }
@@ -32,13 +28,13 @@ const parseSlots = (rawSlots) => {
       break;
     }
   }
-
-  const isArr = Array.isArray(data);
-  console.log("🔍 [DoctorDetails DEBUG] Final output is Array?:", isArr, data);
-  return isArr ? data : [];
+  return Array.isArray(data) ? data : [];
 };
 
-export default function DoctorDetails({ doctor, onBack }) {
+export default function DoctorDetails({ doctor: propDoctor, onBack }) {
+  // Use prop if available, otherwise read from persistent storage
+  const [currentDoctor, setCurrentDoctor] = useState(() => propDoctor || getPersistedSelection('doctor'));
+
   const [slotsData, setSlotsData] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -54,45 +50,55 @@ export default function DoctorDetails({ doctor, onBack }) {
   const [submittingBooking, setSubmittingBooking] = useState(false);
 
   useEffect(() => {
+    if (propDoctor) {
+      setCurrentDoctor(propDoctor);
+      persistSelection('doctor', propDoctor);
+    }
+  }, [propDoctor]);
+
+  useEffect(() => {
     const syncDoctorDetailsData = async () => {
+      if (!currentDoctor) return;
       setLoading(true);
       setError('');
-      console.log("🚀 [DoctorDetails DEBUG] Syncing doctor details for:", doctor);
       try {
-        const targetId = doctor.user_id || doctor.id;
-        console.log("🩺 [DoctorDetails DEBUG] Target doctor ID:", targetId);
+        const targetId = currentDoctor.user_id || currentDoctor.id;
         
         const slotsResponse = await patientEndpoints.showDoctorSlots(targetId);
-        console.log("📩 [DoctorDetails DEBUG] Raw slots API response:", slotsResponse);
-
-        const rawSlotsString = slotsResponse.data?.slots?.[0]?.slots || slotsResponse.data?.slots || doctor.user?.doctorSlots?.slots;
-        console.log("📦 [DoctorDetails DEBUG] Extracted raw slots string:", rawSlotsString);
-
+        const rawSlotsString = slotsResponse.data?.slots?.[0]?.slots || slotsResponse.data?.slots || currentDoctor.user?.doctorSlots?.slots;
         const parsedSlots = parseSlots(rawSlotsString);
         
         if (parsedSlots.length > 0) {
           const validDays = parsedSlots.filter(day => day.slots && day.slots.length > 0);
-          console.log("📊 [DoctorDetails DEBUG] Valid days with slots count:", validDays.length);
           setSlotsData(validDays);
         } else {
-          console.warn("⚠️ [DoctorDetails DEBUG] Parsed slots resulted in an empty array.");
           setSlotsData([]);
         }
 
         const reviewsResponse = await patientEndpoints.getDoctorRating(targetId);
         setReviews(reviewsResponse.data?.reviews || reviewsResponse.data || []);
       } catch (err) {
-        console.error("❌ [DoctorDetails DEBUG] Failed to sync doctor details:", err);
-        setReviews([
-          { id: 1, review_text: "Outstanding system architecture setup. Extremely clear guidance.", created_at: "2026-07-20T10:30:00.000Z" }
-        ]);
+        // Clear out hardcoded reviews so invalid garbage data is not rendered
+        setReviews([]);
+        setError(err.response?.data?.message || 'Could not synchronize doctor consultation slots.');
       } finally {
         setLoading(false);
       }
     };
 
-    if (doctor) syncDoctorDetailsData();
-  }, [doctor]);
+    syncDoctorDetailsData();
+  }, [currentDoctor]);
+
+  if (!currentDoctor) {
+    return (
+      <div className="bg-white p-8 text-center rounded-2xl border border-slate-200">
+        <p className="text-slate-500 mb-4 font-medium">No doctor profile selected or session expired.</p>
+        <button onClick={onBack} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+          Return to Directory
+        </button>
+      </div>
+    );
+  }
 
   const filteredDays = slotsData.filter(dayObj => {
     const dayMode = (dayObj.mode || '').toLowerCase();
@@ -151,7 +157,7 @@ export default function DoctorDetails({ doctor, onBack }) {
     setSubmittingBooking(true);
     setError('');
     
-    const doctorId = Number(doctor.user_id || doctor.id);
+    const doctorId = Number(currentDoctor.user_id || currentDoctor.id);
 
     try {
       const targetDay = filteredDays[selectedDayIndex];
@@ -195,12 +201,12 @@ export default function DoctorDetails({ doctor, onBack }) {
           amount: totalAmount,
           currency: "INR",
           name: "DocApp Healthcare",
-          description: `Appointment with ${doctor.user?.username || doctor.username || 'Doctor'}`,
+          description: `Appointment with ${currentDoctor.user?.username || currentDoctor.username || 'Doctor'}`,
           order_id: orderId,
           prefill: {
-            name: doctor.user?.username || doctor.username || "",
-            email: doctor.user?.email || doctor.email || "",
-            contact: doctor.user?.phone_number || doctor.phone_number || ""
+            name: currentDoctor.user?.username || currentDoctor.username || "",
+            email: currentDoctor.user?.email || currentDoctor.email || "",
+            contact: currentDoctor.user?.phone_number || currentDoctor.phone_number || ""
           },
           theme: { color: "#2563eb" },
           modal: {
@@ -215,7 +221,6 @@ export default function DoctorDetails({ doctor, onBack }) {
         rzp.open();
       }
     } catch (err) {
-      console.error("Booking Error:", err);
       setError(err.response?.data?.message || err.message || 'Booking execution failed.');
       setSubmittingBooking(false);
     }
@@ -236,7 +241,7 @@ export default function DoctorDetails({ doctor, onBack }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <DoctorProfileSidebar
-          doctor={doctor}
+          doctor={currentDoctor}
           selectedModes={selectedModes}
           onToggleMode={handleToggleMode}
         />

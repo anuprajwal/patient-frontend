@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { patientEndpoints } from '../../services/api';
 import Loader from '../ui/Loader';
 import Alert from '../ui/Alert';
+import { getPersistedSelection, persistSelection } from '../../utils/navigationStorage';
 import {
-  Building2,
   MapPin,
   Globe,
   Award,
@@ -17,7 +17,6 @@ import {
   IndianRupee
 } from 'lucide-react';
 
-// Helper to format experience from practice_start_date (or fallback to legacy experience_years)
 const formatDoctorExperience = (practiceStartDate, legacyYears) => {
   if (practiceStartDate) {
     const [startYear, startMonth] = practiceStartDate.slice(0, 7).split('-').map(Number);
@@ -25,45 +24,41 @@ const formatDoctorExperience = (practiceStartDate, legacyYears) => {
       const now = new Date();
       const currentYear = now.getFullYear();
       const currentMonth = now.getMonth() + 1;
-
       const totalMonths = (currentYear - startYear) * 12 + (currentMonth - startMonth);
       if (totalMonths < 0) return 'Practice starts soon';
-
       const years = Math.floor(totalMonths / 12);
       const months = totalMonths % 12;
-
-      const yearStr = years > 0 ? `${years} ${years === 1 ? 'yr' : 'yrs'}` : '';
-      const monthStr = months > 0 ? `${months} ${months === 1 ? 'mo' : 'mos'}` : '';
-
-      if (yearStr && monthStr) return `${yearStr} ${monthStr} exp`;
-      if (yearStr) return `${yearStr} exp`;
-      if (monthStr) return `${monthStr} exp`;
-      return '< 1 mo exp';
+      if (years > 0 && months > 0) return `${years} yr ${months} mos exp`;
+      if (years > 0) return `${years} yrs exp`;
+      return `${months} mos exp`;
     }
   }
-
-  if (legacyYears) {
-    return `${legacyYears} yrs exp`;
-  }
-
-  return 'Practitioner';
+  return legacyYears ? `${legacyYears} yrs exp` : 'Practitioner';
 };
 
-export default function HospitalDetails({ hospital, onBack, onSelectDoctor }) {
+export default function HospitalDetails({ hospital: propHospital, onBack, onSelectDoctor }) {
+  const [currentHospital, setCurrentHospital] = useState(() => propHospital || getPersistedSelection('hospital'));
   const [doctors, setDoctors] = useState([]);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
   const [error, setError] = useState('');
 
-  // Pagination for doctors
   const [limit] = useState(6);
   const [offset, setOffset] = useState(0);
   const [totalDoctors, setTotalDoctors] = useState(0);
 
   useEffect(() => {
-    if (hospital?.user_id) {
-      fetchDoctors(hospital.user_id, offset);
+    if (propHospital) {
+      setCurrentHospital(propHospital);
+      persistSelection('hospital', propHospital);
     }
-  }, [hospital, offset]);
+  }, [propHospital]);
+
+  useEffect(() => {
+    const targetId = currentHospital?.user_id || currentHospital?.id;
+    if (targetId) {
+      fetchDoctors(targetId, offset);
+    }
+  }, [currentHospital, offset]);
 
   const fetchDoctors = async (orgId, currentOffset) => {
     setLoadingDoctors(true);
@@ -81,27 +76,25 @@ export default function HospitalDetails({ hospital, onBack, onSelectDoctor }) {
     }
   };
 
-  const handleNextPage = () => {
-    if (offset + limit < totalDoctors) {
-      setOffset((prev) => prev + limit);
-    }
-  };
+  if (!currentHospital) {
+    return (
+      <div className="bg-white p-8 text-center rounded-2xl border border-slate-200">
+        <p className="text-slate-500 mb-4 font-medium">No hospital selected or session expired.</p>
+        <button onClick={onBack} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+          Return to Directory
+        </button>
+      </div>
+    );
+  }
 
-  const handlePrevPage = () => {
-    if (offset - limit >= 0) {
-      setOffset((prev) => prev - limit);
-    }
-  };
-
-  const specializations = hospital?.specializations_provided
-    ? Array.isArray(hospital.specializations_provided)
-      ? hospital.specializations_provided
-      : JSON.parse(hospital.specializations_provided || '[]')
+  const specializations = currentHospital?.specializations_provided
+    ? Array.isArray(currentHospital.specializations_provided)
+      ? currentHospital.specializations_provided
+      : JSON.parse(currentHospital.specializations_provided || '[]')
     : [];
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto p-4">
-      {/* Back Button */}
       <button
         onClick={onBack}
         className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
@@ -109,21 +102,20 @@ export default function HospitalDetails({ hospital, onBack, onSelectDoctor }) {
         <ArrowLeft className="w-4 h-4" /> Back to Hospitals Directory
       </button>
 
-      {/* Hospital Overview Card */}
       <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row gap-6 items-start">
           <img
-            src={hospital?.profile_picture || 'https://res.cloudinary.com/dwshjkk42/image/upload/v1751270847/hospital-building_4821512_qr0gvo.png'}
-            alt={hospital?.organisation_name || 'Hospital Profile'}
+            src={currentHospital?.profile_picture || 'https://res.cloudinary.com/dwshjkk42/image/upload/v1751270847/hospital-building_4821512_qr0gvo.png'}
+            alt={currentHospital?.organisation_name || 'Hospital Profile'}
             className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl object-cover border border-slate-200 shadow-sm flex-shrink-0"
           />
 
           <div className="space-y-3 flex-1">
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                {hospital?.organisation_name || 'Hospital Facility'}
+                {currentHospital?.organisation_name || 'Hospital Facility'}
               </h1>
-              {hospital?.verified_status && (
+              {currentHospital?.verified_status && (
                 <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-200">
                   <ShieldCheck className="w-3.5 h-3.5" /> Verified
                 </span>
@@ -132,40 +124,40 @@ export default function HospitalDetails({ hospital, onBack, onSelectDoctor }) {
 
             <p className="text-slate-600 text-sm flex items-center gap-1.5">
               <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
-              {hospital?.address?.street
-                ? `${hospital.address.street}, ${hospital.address.city || ''} - ${hospital.address.pincode || ''}`
+              {currentHospital?.address?.street
+                ? `${currentHospital.address.street}, ${currentHospital.address.city || ''} - ${currentHospital.address.pincode || ''}`
                 : 'Address not specified'}
             </p>
 
             <div className="flex flex-wrap gap-4 pt-1 text-xs text-slate-600 font-medium">
-              {hospital?.regestration_number && (
+              {currentHospital?.regestration_number && (
                 <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
-                  <Award className="w-3.5 h-3.5 text-blue-500" /> Reg: {hospital.regestration_number}
+                  <Award className="w-3.5 h-3.5 text-blue-500" /> Reg: {currentHospital.regestration_number}
                 </span>
               )}
-              {hospital?.establishment_year && (
+              {currentHospital?.establishment_year && (
                 <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
-                  <Calendar className="w-3.5 h-3.5 text-blue-500" /> Est: {hospital.establishment_year}
+                  <Calendar className="w-3.5 h-3.5 text-blue-500" /> Est: {currentHospital.establishment_year}
                 </span>
               )}
-              {hospital?.website_url && (
+              {currentHospital?.website_url && (
                 <a
-                  href={hospital.website_url.startsWith('http') ? hospital.website_url : `https://${hospital.website_url}`}
+                  href={currentHospital.website_url.startsWith('http') ? currentHospital.website_url : `https://${currentHospital.website_url}`}
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center gap-1.5 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 hover:underline"
                 >
-                  <Globe className="w-3.5 h-3.5" /> {hospital.website_url}
+                  <Globe className="w-3.5 h-3.5" /> {currentHospital.website_url}
                 </a>
               )}
             </div>
           </div>
         </div>
 
-        {hospital?.description && (
+        {currentHospital?.description && (
           <div className="pt-4 border-t border-slate-100">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">About Hospital</h3>
-            <p className="text-slate-700 text-sm leading-relaxed">{hospital.description}</p>
+            <p className="text-slate-700 text-sm leading-relaxed">{currentHospital.description}</p>
           </div>
         )}
 
@@ -227,7 +219,7 @@ export default function HospitalDetails({ hospital, onBack, onSelectDoctor }) {
                     />
                     <div className="min-w-0 flex-1">
                       <h4 className="font-bold text-slate-900 text-sm truncate group-hover:text-blue-600 transition-colors">
-                        {doctorUser.username || profile.full_name || 'Dr. Practitioner'}
+                        {doctorUser.username || profile.full_name || 'Practitioner'}
                       </h4>
                       <p className="text-blue-600 text-xs font-semibold mt-0.5 truncate">
                         {profile.specialization || 'General Specialist'}
@@ -256,7 +248,6 @@ export default function HospitalDetails({ hospital, onBack, onSelectDoctor }) {
           </div>
         )}
 
-        {/* Doctor Pagination */}
         {totalDoctors > limit && (
           <div className="flex items-center justify-between bg-white px-4 py-3 border border-slate-200 rounded-xl shadow-sm mt-4">
             <span className="text-xs text-slate-500 font-medium">
@@ -266,14 +257,14 @@ export default function HospitalDetails({ hospital, onBack, onSelectDoctor }) {
             </span>
             <div className="flex items-center gap-2">
               <button
-                onClick={handlePrevPage}
+                onClick={() => offset - limit >= 0 && setOffset(prev => prev - limit)}
                 disabled={offset === 0 || loadingDoctors}
                 className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
-                onClick={handleNextPage}
+                onClick={() => offset + limit < totalDoctors && setOffset(prev => prev + limit)}
                 disabled={offset + limit >= totalDoctors || loadingDoctors}
                 className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition"
               >
