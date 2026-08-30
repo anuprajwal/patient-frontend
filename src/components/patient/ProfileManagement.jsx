@@ -34,7 +34,7 @@ export default function ProfileManagement() {
       const addrRes = await patientEndpoints.getAllAddress();
       setAddresses(addrRes.data?.addresses || addrRes.data || []);
     } catch (err) {
-      setAlert({ type: 'error', message: 'Failed to sync user details profile parameters.' });
+      setAlert({ type: 'error', message: 'Failed to load profile details.' });
     } finally {
       setLoading(false);
     }
@@ -50,12 +50,11 @@ export default function ProfileManagement() {
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Calls updated PUT mutation route under the hood
       await patientEndpoints.completeProfile(profileForm);
-      triggerAlert('success', 'Profile data mutated successfully.');
+      triggerAlert('success', 'Profile updated successfully.');
       syncProfileData();
     } catch (err) {
-      triggerAlert('error', 'Profile update execution rejected.');
+      triggerAlert('error', 'Could not update profile. Please try again.');
     }
   };
 
@@ -66,18 +65,18 @@ export default function ProfileManagement() {
     fd.append('image', file);
     try {
       await patientEndpoints.uploadPhoto(fd);
-      triggerAlert('success', 'Profile picture streamed successfully.');
+      triggerAlert('success', 'Profile picture uploaded successfully.');
       syncProfileData();
     } catch (err) {
-      triggerAlert('error', 'Image multipart transmission failed.');
+      triggerAlert('error', 'Failed to upload photo.');
     }
   };
 
   const handlePhotoDelete = async () => {
-    if (!confirm("Confirm photo detachment?")) return;
+    if (!confirm("Are you sure you want to remove your profile photo?")) return;
     try {
       await patientEndpoints.deletePhoto();
-      triggerAlert('success', 'Photo resource detached successfully.');
+      triggerAlert('success', 'Profile picture removed.');
       syncProfileData();
     } catch (err) {
       triggerAlert('error', 'Failed to delete photo.');
@@ -89,28 +88,27 @@ export default function ProfileManagement() {
     try {
       if (editingAddressId) {
         await patientEndpoints.updateAddress({ addressId: editingAddressId, ...addressForm });
-        triggerAlert('success', 'Address entry mutated successfully.');
+        triggerAlert('success', 'Address updated successfully.');
       } else {
         await patientEndpoints.addAddress(addressForm);
-        triggerAlert('success', 'New address location initialized.');
+        triggerAlert('success', 'Address added successfully.');
       }
       setAddressForm({ country: 'India', state: '', city: '', pincode: '', street: '', landmark: '', houseNo: '' });
       setEditingAddressId(null);
       syncProfileData();
     } catch (err) {
-      triggerAlert('error', 'Address transaction operation failed.');
+      triggerAlert('error', 'Failed to save address.');
     }
   };
 
   const handleAddressDelete = async (id) => {
-    if (!confirm("Permanently delete address node?")) return;
+    if (!confirm("Are you sure you want to delete this address?")) return;
     try {
-      // Maps the string conversion clean to pass target variables explicitly
       await patientEndpoints.deleteAddress(String(id));
-      triggerAlert('success', 'Address record dropped from ledger.');
+      triggerAlert('success', 'Address deleted successfully.');
       syncProfileData();
     } catch (err) {
-      triggerAlert('error', 'Failed to purge address target.');
+      triggerAlert('error', 'Failed to delete address.');
     }
   };
 
@@ -118,10 +116,10 @@ export default function ProfileManagement() {
     e.preventDefault();
     try {
       await patientEndpoints.changePassword(passwordForm.newPassword);
-      triggerAlert('success', 'Security keys updated successfully.');
+      triggerAlert('success', 'Password changed successfully.');
       setPasswordForm({ newPassword: '' });
     } catch (err) {
-      triggerAlert('error', 'Password reconfiguration rejected.');
+      triggerAlert('error', 'Failed to change password.');
     }
   };
 
@@ -132,8 +130,8 @@ export default function ProfileManagement() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Account Identity Matrix</h2>
-        <p className="text-slate-500 text-sm">Manage dynamic data variables, verify compliance markers, and adjust billing locations.</p>
+        <h2 className="text-2xl font-bold text-slate-900">Profile & Settings</h2>
+        <p className="text-slate-500 text-sm">Manage your personal details, verify your contact information, and update saved addresses.</p>
       </div>
 
       <Alert type={alert.type} message={alert.message} />
@@ -155,20 +153,20 @@ export default function ProfileManagement() {
             </div>
             {profilePicUrl && (
               <button onClick={handlePhotoDelete} className="text-xs font-semibold text-rose-600 hover:text-rose-700 flex items-center gap-1 mx-auto transition-colors">
-                <Trash2 className="w-3.5 h-3.5" /> Purge Image
+                <Trash2 className="w-3.5 h-3.5" /> Remove Photo
               </button>
             )}
 
             <div className="border-t border-slate-100 pt-4 text-left space-y-3">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Compliance Checks</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Account Verification</span>
               
               <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
                 <div className="text-xs">
-                  <span className="font-bold text-slate-700 block">Email Address</span>
+                  <span className="font-bold text-slate-700 block">Email</span>
                   <span className="text-slate-400 block mt-0.5 truncate max-w-[160px]">{userData?.email}</span>
                 </div>
                 {userData?.is_email_verified ? (
-                  <span className="text-emerald-600 flex items-center gap-1 text-xs font-bold"><CheckCircle className="w-4 h-4" /> Passed</span>
+                  <span className="text-emerald-600 flex items-center gap-1 text-xs font-bold"><CheckCircle className="w-4 h-4" /> Verified</span>
                 ) : (
                   <button onClick={() => setVerificationTarget('email')} className="text-xs bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 font-bold px-2.5 py-1 rounded transition-colors">Verify</button>
                 )}
@@ -176,11 +174,11 @@ export default function ProfileManagement() {
 
               <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
                 <div className="text-xs">
-                  <span className="font-bold text-slate-700 block">Mobile Network</span>
-                  <span className="text-slate-400 block mt-0.5">{userData?.phone_number || 'Not Registered'}</span>
+                  <span className="font-bold text-slate-700 block">Phone Number</span>
+                  <span className="text-slate-400 block mt-0.5">{userData?.phone_number || 'Not Added'}</span>
                 </div>
                 {userData?.is_phone_verified ? (
-                  <span className="text-emerald-600 flex items-center gap-1 text-xs font-bold"><CheckCircle className="w-4 h-4" /> Passed</span>
+                  <span className="text-emerald-600 flex items-center gap-1 text-xs font-bold"><CheckCircle className="w-4 h-4" /> Verified</span>
                 ) : (
                   <button onClick={() => setVerificationTarget('mobile')} className="text-xs bg-brand-50 hover:bg-brand-100 text-brand-700 border border-brand-200 font-bold px-2.5 py-1 rounded transition-colors">Verify</button>
                 )}
@@ -189,9 +187,9 @@ export default function ProfileManagement() {
           </div>
 
           <form onSubmit={handlePasswordSubmit} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><Key className="w-4 h-4 text-slate-400" /> Security Layer Overrides</h3>
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><Key className="w-4 h-4 text-slate-400" /> Change Password</h3>
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase">New System Password</label>
+              <label className="block text-xs font-bold text-slate-700 uppercase">New Password</label>
               <input
                 type="password"
                 required
@@ -202,18 +200,18 @@ export default function ProfileManagement() {
               />
             </div>
             <button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs py-2.5 rounded-lg transition-colors shadow-sm">
-              Mutate Core Keys
+              Update Password
             </button>
           </form>
         </div>
 
-        {/* Demographic & Address Modules */}
+        {/* Personal Details & Saved Addresses */}
         <div className="space-y-6 lg:col-span-2">
           <form onSubmit={handleProfileSubmit} className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><Calendar className="w-4 h-4 text-slate-400" /> Demographic Constraints</h3>
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><Calendar className="w-4 h-4 text-slate-400" /> Personal Details</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase">Date Of Birth</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase">Date of Birth</label>
                 <input
                   type="date"
                   required
@@ -223,7 +221,7 @@ export default function ProfileManagement() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase">Gender Specifier</label>
+                <label className="block text-xs font-bold text-slate-700 uppercase">Gender</label>
                 <select
                   required
                   value={profileForm.gender}
@@ -239,43 +237,43 @@ export default function ProfileManagement() {
             </div>
             <div className="flex justify-end pt-2">
               <button type="submit" className="bg-brand-600 hover:bg-brand-700 text-white font-semibold text-xs px-5 py-2.5 rounded-lg transition-colors shadow-sm">
-                Commit Demographics
+                Save Personal Details
               </button>
             </div>
           </form>
 
-          {/* Address Framework */}
+          {/* Saved Addresses */}
           <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
-            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><MapPin className="w-4 h-4 text-slate-400" /> Physical Address Matrix</h3>
+            <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><MapPin className="w-4 h-4 text-slate-400" /> Saved Addresses</h3>
             
             <form onSubmit={handleAddressSubmit} className="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <div className="sm:col-span-2">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase">Street Line</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase">Street Address</label>
                 <input type="text" required value={addressForm.street} onChange={(e) => setAddressForm({ ...addressForm, street: e.target.value })} className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-brand-500 font-medium" />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase">House / Suite No</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase">House / Flat No.</label>
                 <input type="text" value={addressForm.houseNo} onChange={(e) => setAddressForm({ ...addressForm, houseNo: e.target.value })} className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-brand-500 font-medium" />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase">City Node</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase">City</label>
                 <input type="text" required value={addressForm.city} onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })} className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-brand-500 font-medium" />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase">State / Province</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase">State</label>
                 <input type="text" required value={addressForm.state} onChange={(e) => setAddressForm({ ...addressForm, state: e.target.value })} className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-brand-500 font-medium" />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase">Zip Pincode</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase">Pincode</label>
                 <input type="text" required value={addressForm.pincode} onChange={(e) => setAddressForm({ ...addressForm, pincode: e.target.value })} className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-brand-500 font-medium" />
               </div>
               <div className="sm:col-span-2 flex items-end justify-between gap-3 mt-2 sm:mt-0">
                 <div className="flex-1">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase">Landmark Parameter</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase">Landmark (Optional)</label>
                   <input type="text" value={addressForm.landmark} onChange={(e) => setAddressForm({ ...addressForm, landmark: e.target.value })} className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-brand-500 font-medium" />
                 </div>
                 <button type="submit" className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-4 py-2.5 rounded-lg h-fit shadow-sm border border-slate-800">
-                  {editingAddressId ? 'Save Node' : 'Push Address'}
+                  {editingAddressId ? 'Save Address' : 'Add Address'}
                 </button>
               </div>
             </form>
@@ -286,7 +284,7 @@ export default function ProfileManagement() {
                   <div className="text-sm">
                     <p className="font-bold text-slate-800">{addr.street} {addr.houseNo ? `, Apt ${addr.houseNo}` : ''}</p>
                     <p className="text-slate-500 text-xs mt-0.5 font-medium">{addr.city}, {addr.state} - <span className="text-slate-700 font-semibold">{addr.pincode}</span> | {addr.country}</p>
-                    {addr.landmark && <p className="text-slate-400 text-[11px] italic mt-1 font-medium">Ref: {addr.landmark}</p>}
+                    {addr.landmark && <p className="text-slate-400 text-[11px] italic mt-1 font-medium">Landmark: {addr.landmark}</p>}
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -299,7 +297,7 @@ export default function ProfileManagement() {
                       Edit
                     </button>
                     <button onClick={() => handleAddressDelete(addr.id)} className="text-xs bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 hover:border-rose-200 font-bold px-2.5 py-1.5 rounded-lg shadow-sm">
-                      Remove
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -307,7 +305,7 @@ export default function ProfileManagement() {
 
               {addresses.length === 0 && (
                 <div className="text-center p-8 border border-dashed border-slate-200 rounded-xl text-slate-400 text-xs">
-                  No active addresses discovered. Please use the form above to record your physical location.
+                  No saved addresses found. Use the form above to add an address.
                 </div>
               )}
             </div>
