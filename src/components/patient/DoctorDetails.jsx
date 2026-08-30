@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { patientEndpoints } from '../../services/api';
 import Alert from '../ui/Alert';
-import Loader from '../ui/Loader';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 import DoctorProfileSidebar from './doctor/DoctorProfileSidebar';
 import SlotSelectionMatrix from './doctor/SlotSelectionMatrix';
 import DoctorReviewsSection from './doctor/DoctorReviewsSection';
-import { getPersistedSelection, persistSelection } from '../../utils/navigationStorage';
+import { getSelectedItem, clearSelectedItem } from '../../utils/navigationStorage';
 
 const parseSlots = (rawSlots) => {
   if (!rawSlots) return [];
@@ -32,8 +31,8 @@ const parseSlots = (rawSlots) => {
 };
 
 export default function DoctorDetails({ doctor: propDoctor, onBack }) {
-  // Use prop if available, otherwise read from persistent storage
-  const [currentDoctor, setCurrentDoctor] = useState(() => propDoctor || getPersistedSelection('doctor'));
+  // Read active doctor from prop or the single stored item
+  const doctor = propDoctor || getSelectedItem('doctor');
 
   const [slotsData, setSlotsData] = useState([]);
   const [reviews, setReviews] = useState([]);
@@ -50,22 +49,16 @@ export default function DoctorDetails({ doctor: propDoctor, onBack }) {
   const [submittingBooking, setSubmittingBooking] = useState(false);
 
   useEffect(() => {
-    if (propDoctor) {
-      setCurrentDoctor(propDoctor);
-      persistSelection('doctor', propDoctor);
-    }
-  }, [propDoctor]);
-
-  useEffect(() => {
-    const syncDoctorDetailsData = async () => {
-      if (!currentDoctor) return;
+    const fetchFreshDoctorData = async () => {
+      if (!doctor) return;
       setLoading(true);
       setError('');
       try {
-        const targetId = currentDoctor.user_id || currentDoctor.id;
+        const targetId = doctor.user_id || doctor.id;
         
+        // Live API call for current consultation slots
         const slotsResponse = await patientEndpoints.showDoctorSlots(targetId);
-        const rawSlotsString = slotsResponse.data?.slots?.[0]?.slots || slotsResponse.data?.slots || currentDoctor.user?.doctorSlots?.slots;
+        const rawSlotsString = slotsResponse.data?.slots?.[0]?.slots || slotsResponse.data?.slots || doctor.user?.doctorSlots?.slots;
         const parsedSlots = parseSlots(rawSlotsString);
         
         if (parsedSlots.length > 0) {
@@ -75,25 +68,30 @@ export default function DoctorDetails({ doctor: propDoctor, onBack }) {
           setSlotsData([]);
         }
 
+        // Live API call for current ratings and reviews
         const reviewsResponse = await patientEndpoints.getDoctorRating(targetId);
         setReviews(reviewsResponse.data?.reviews || reviewsResponse.data || []);
       } catch (err) {
-        // Clear out hardcoded reviews so invalid garbage data is not rendered
         setReviews([]);
-        setError(err.response?.data?.message || 'Could not synchronize doctor consultation slots.');
+        setError(err.response?.data?.message || 'Failed to fetch doctor availability slots.');
       } finally {
         setLoading(false);
       }
     };
 
-    syncDoctorDetailsData();
-  }, [currentDoctor]);
+    fetchFreshDoctorData();
+  }, [doctor]);
 
-  if (!currentDoctor) {
+  const handleBack = () => {
+    clearSelectedItem('doctor');
+    onBack();
+  };
+
+  if (!doctor) {
     return (
       <div className="bg-white p-8 text-center rounded-2xl border border-slate-200">
-        <p className="text-slate-500 mb-4 font-medium">No doctor profile selected or session expired.</p>
-        <button onClick={onBack} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+        <p className="text-slate-500 mb-4 font-medium">No doctor selected or session expired.</p>
+        <button onClick={handleBack} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
           Return to Directory
         </button>
       </div>
@@ -157,7 +155,7 @@ export default function DoctorDetails({ doctor: propDoctor, onBack }) {
     setSubmittingBooking(true);
     setError('');
     
-    const doctorId = Number(currentDoctor.user_id || currentDoctor.id);
+    const doctorId = Number(doctor.user_id || doctor.id);
 
     try {
       const targetDay = filteredDays[selectedDayIndex];
@@ -188,25 +186,20 @@ export default function DoctorDetails({ doctor: propDoctor, onBack }) {
       }
 
       if (paymentMode === 'card') {
-        if (!orderId) {
-          throw new Error('Failed to retrieve Razorpay Order ID from server response.');
-        }
-
-        if (!window.Razorpay) {
-          throw new Error('Razorpay SDK script not loaded in index.html.');
-        }
+        if (!orderId) throw new Error('Failed to retrieve Razorpay Order ID.');
+        if (!window.Razorpay) throw new Error('Razorpay SDK script not loaded in index.html.');
 
         const options = {
           key: key || import.meta.env.VITE_RAZORPAY_KEY_ID,
           amount: totalAmount,
           currency: "INR",
           name: "DocApp Healthcare",
-          description: `Appointment with ${currentDoctor.user?.username || currentDoctor.username || 'Doctor'}`,
+          description: `Appointment with ${doctor.user?.username || doctor.username || 'Doctor'}`,
           order_id: orderId,
           prefill: {
-            name: currentDoctor.user?.username || currentDoctor.username || "",
-            email: currentDoctor.user?.email || currentDoctor.email || "",
-            contact: currentDoctor.user?.phone_number || currentDoctor.phone_number || ""
+            name: doctor.user?.username || doctor.username || "",
+            email: doctor.user?.email || doctor.email || "",
+            contact: doctor.user?.phone_number || doctor.phone_number || ""
           },
           theme: { color: "#2563eb" },
           modal: {
@@ -228,7 +221,7 @@ export default function DoctorDetails({ doctor: propDoctor, onBack }) {
 
   return (
     <div className="space-y-6">
-      <button onClick={onBack} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 text-sm font-semibold transition-colors">
+      <button onClick={handleBack} className="flex items-center gap-2 text-slate-600 hover:text-slate-900 text-sm font-semibold transition-colors">
         <ArrowLeft className="w-4 h-4" /> Return to Directory
       </button>
 
@@ -241,7 +234,7 @@ export default function DoctorDetails({ doctor: propDoctor, onBack }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <DoctorProfileSidebar
-          doctor={currentDoctor}
+          doctor={doctor}
           selectedModes={selectedModes}
           onToggleMode={handleToggleMode}
         />

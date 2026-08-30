@@ -2,19 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { patientEndpoints } from '../../services/api';
 import Loader from '../ui/Loader';
 import Alert from '../ui/Alert';
-import { getPersistedSelection, persistSelection } from '../../utils/navigationStorage';
+import { getSelectedItem, clearSelectedItem } from '../../utils/navigationStorage';
 import {
-  MapPin,
-  Globe,
-  Award,
-  Calendar,
-  ShieldCheck,
-  ChevronLeft,
-  ChevronRight,
-  ArrowLeft,
-  Stethoscope,
-  Clock,
-  IndianRupee
+  MapPin, Globe, Award, Calendar, ShieldCheck,
+  ChevronLeft, ChevronRight, ArrowLeft, Stethoscope, Clock, IndianRupee
 } from 'lucide-react';
 
 const formatDoctorExperience = (practiceStartDate, legacyYears) => {
@@ -37,7 +28,7 @@ const formatDoctorExperience = (practiceStartDate, legacyYears) => {
 };
 
 export default function HospitalDetails({ hospital: propHospital, onBack, onSelectDoctor }) {
-  const [currentHospital, setCurrentHospital] = useState(() => propHospital || getPersistedSelection('hospital'));
+  const hospital = propHospital || getSelectedItem('hospital');
   const [doctors, setDoctors] = useState([]);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
   const [error, setError] = useState('');
@@ -47,20 +38,13 @@ export default function HospitalDetails({ hospital: propHospital, onBack, onSele
   const [totalDoctors, setTotalDoctors] = useState(0);
 
   useEffect(() => {
-    if (propHospital) {
-      setCurrentHospital(propHospital);
-      persistSelection('hospital', propHospital);
-    }
-  }, [propHospital]);
-
-  useEffect(() => {
-    const targetId = currentHospital?.user_id || currentHospital?.id;
+    const targetId = hospital?.user_id || hospital?.id;
     if (targetId) {
-      fetchDoctors(targetId, offset);
+      fetchFreshDoctors(targetId, offset);
     }
-  }, [currentHospital, offset]);
+  }, [hospital, offset]);
 
-  const fetchDoctors = async (orgId, currentOffset) => {
+  const fetchFreshDoctors = async (orgId, currentOffset) => {
     setLoadingDoctors(true);
     setError('');
     try {
@@ -76,46 +60,48 @@ export default function HospitalDetails({ hospital: propHospital, onBack, onSele
     }
   };
 
-  if (!currentHospital) {
+  const handleBack = () => {
+    clearSelectedItem('hospital');
+    onBack();
+  };
+
+  if (!hospital) {
     return (
       <div className="bg-white p-8 text-center rounded-2xl border border-slate-200">
         <p className="text-slate-500 mb-4 font-medium">No hospital selected or session expired.</p>
-        <button onClick={onBack} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+        <button onClick={handleBack} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
           Return to Directory
         </button>
       </div>
     );
   }
 
-  const specializations = currentHospital?.specializations_provided
-    ? Array.isArray(currentHospital.specializations_provided)
-      ? currentHospital.specializations_provided
-      : JSON.parse(currentHospital.specializations_provided || '[]')
+  const specializations = hospital?.specializations_provided
+    ? Array.isArray(hospital.specializations_provided)
+      ? hospital.specializations_provided
+      : JSON.parse(hospital.specializations_provided || '[]')
     : [];
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto p-4">
-      <button
-        onClick={onBack}
-        className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors"
-      >
+      <button onClick={handleBack} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors">
         <ArrowLeft className="w-4 h-4" /> Back to Hospitals Directory
       </button>
 
       <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row gap-6 items-start">
           <img
-            src={currentHospital?.profile_picture || 'https://res.cloudinary.com/dwshjkk42/image/upload/v1751270847/hospital-building_4821512_qr0gvo.png'}
-            alt={currentHospital?.organisation_name || 'Hospital Profile'}
+            src={hospital?.profile_picture || 'https://res.cloudinary.com/dwshjkk42/image/upload/v1751270847/hospital-building_4821512_qr0gvo.png'}
+            alt={hospital?.organisation_name || 'Hospital Profile'}
             className="w-24 h-24 sm:w-32 sm:h-32 rounded-2xl object-cover border border-slate-200 shadow-sm flex-shrink-0"
           />
 
           <div className="space-y-3 flex-1">
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                {currentHospital?.organisation_name || 'Hospital Facility'}
+                {hospital?.organisation_name || 'Hospital Facility'}
               </h1>
-              {currentHospital?.verified_status && (
+              {hospital?.verified_status && (
                 <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs font-semibold px-2.5 py-1 rounded-full border border-emerald-200">
                   <ShieldCheck className="w-3.5 h-3.5" /> Verified
                 </span>
@@ -124,40 +110,40 @@ export default function HospitalDetails({ hospital: propHospital, onBack, onSele
 
             <p className="text-slate-600 text-sm flex items-center gap-1.5">
               <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
-              {currentHospital?.address?.street
-                ? `${currentHospital.address.street}, ${currentHospital.address.city || ''} - ${currentHospital.address.pincode || ''}`
+              {hospital?.address?.street
+                ? `${hospital.address.street}, ${hospital.address.city || ''} - ${hospital.address.pincode || ''}`
                 : 'Address not specified'}
             </p>
 
             <div className="flex flex-wrap gap-4 pt-1 text-xs text-slate-600 font-medium">
-              {currentHospital?.regestration_number && (
+              {hospital?.regestration_number && (
                 <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
-                  <Award className="w-3.5 h-3.5 text-blue-500" /> Reg: {currentHospital.regestration_number}
+                  <Award className="w-3.5 h-3.5 text-blue-500" /> Reg: {hospital.regestration_number}
                 </span>
               )}
-              {currentHospital?.establishment_year && (
+              {hospital?.establishment_year && (
                 <span className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
-                  <Calendar className="w-3.5 h-3.5 text-blue-500" /> Est: {currentHospital.establishment_year}
+                  <Calendar className="w-3.5 h-3.5 text-blue-500" /> Est: {hospital.establishment_year}
                 </span>
               )}
-              {currentHospital?.website_url && (
+              {hospital?.website_url && (
                 <a
-                  href={currentHospital.website_url.startsWith('http') ? currentHospital.website_url : `https://${currentHospital.website_url}`}
+                  href={hospital.website_url.startsWith('http') ? hospital.website_url : `https://${hospital.website_url}`}
                   target="_blank"
                   rel="noreferrer"
                   className="flex items-center gap-1.5 bg-blue-50 text-blue-600 px-3 py-1.5 rounded-lg border border-blue-100 hover:underline"
                 >
-                  <Globe className="w-3.5 h-3.5" /> {currentHospital.website_url}
+                  <Globe className="w-3.5 h-3.5" /> {hospital.website_url}
                 </a>
               )}
             </div>
           </div>
         </div>
 
-        {currentHospital?.description && (
+        {hospital?.description && (
           <div className="pt-4 border-t border-slate-100">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">About Hospital</h3>
-            <p className="text-slate-700 text-sm leading-relaxed">{currentHospital.description}</p>
+            <p className="text-slate-700 text-sm leading-relaxed">{hospital.description}</p>
           </div>
         )}
 
@@ -166,10 +152,7 @@ export default function HospitalDetails({ hospital: propHospital, onBack, onSele
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Departments & Services</h3>
             <div className="flex flex-wrap gap-2">
               {specializations.map((item, idx) => (
-                <span
-                  key={idx}
-                  className="px-3 py-1.5 rounded-lg text-xs bg-slate-50 text-slate-700 font-semibold border border-slate-200 flex items-center gap-1.5"
-                >
+                <span key={idx} className="px-3 py-1.5 rounded-lg text-xs bg-slate-50 text-slate-700 font-semibold border border-slate-200 flex items-center gap-1.5">
                   <Stethoscope className="w-3.5 h-3.5 text-blue-500" /> {item}
                 </span>
               ))}
@@ -178,13 +161,10 @@ export default function HospitalDetails({ hospital: propHospital, onBack, onSele
         )}
       </div>
 
-      {/* Hospital Doctors Registry */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-slate-900 tracking-tight">Available Doctors</h2>
-            <p className="text-slate-500 text-xs mt-0.5">Specialists actively operating within this hospital network.</p>
-          </div>
+        <div>
+          <h2 className="text-xl font-bold text-slate-900 tracking-tight">Available Doctors</h2>
+          <p className="text-slate-500 text-xs mt-0.5">Specialists actively operating within this hospital network.</p>
         </div>
 
         {error && <Alert type="error" message={error} />}
@@ -221,12 +201,8 @@ export default function HospitalDetails({ hospital: propHospital, onBack, onSele
                       <h4 className="font-bold text-slate-900 text-sm truncate group-hover:text-blue-600 transition-colors">
                         {doctorUser.username || profile.full_name || 'Practitioner'}
                       </h4>
-                      <p className="text-blue-600 text-xs font-semibold mt-0.5 truncate">
-                        {profile.specialization || 'General Specialist'}
-                      </p>
-                      <p className="text-slate-400 text-xs mt-0.5">
-                        {experienceLabel}
-                      </p>
+                      <p className="text-blue-600 text-xs font-semibold mt-0.5 truncate">{profile.specialization || 'General Specialist'}</p>
+                      <p className="text-slate-400 text-xs mt-0.5">{experienceLabel}</p>
                     </div>
                   </div>
 
@@ -251,9 +227,7 @@ export default function HospitalDetails({ hospital: propHospital, onBack, onSele
         {totalDoctors > limit && (
           <div className="flex items-center justify-between bg-white px-4 py-3 border border-slate-200 rounded-xl shadow-sm mt-4">
             <span className="text-xs text-slate-500 font-medium">
-              Showing <span className="font-bold text-slate-800">{offset + 1}</span> to{' '}
-              <span className="font-bold text-slate-800">{Math.min(offset + limit, totalDoctors)}</span> of{' '}
-              <span className="font-bold text-slate-800">{totalDoctors}</span> doctors
+              Showing <span className="font-bold text-slate-800">{offset + 1}</span> to <span className="font-bold text-slate-800">{Math.min(offset + limit, totalDoctors)}</span> of <span className="font-bold text-slate-800">{totalDoctors}</span> doctors
             </span>
             <div className="flex items-center gap-2">
               <button

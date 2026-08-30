@@ -1,21 +1,20 @@
-export const persistSelection = (key, item) => {
-  if (item) {
-    sessionStorage.setItem(`selected_${key}`, JSON.stringify(item));
+export const setSelectedItem = (key, data) => {
+  if (data) {
+    localStorage.setItem(`selected_${key}`, JSON.stringify(data));
   } else {
-    sessionStorage.removeItem(`selected_${key}`);
+    localStorage.removeItem(`selected_${key}`);
   }
 };
 
-export const getPersistedSelection = (key) => {
+export const getSelectedItem = (key) => {
   try {
-    const raw = sessionStorage.getItem(`selected_${key}`);
+    const raw = localStorage.getItem(`selected_${key}`);
     return raw ? JSON.parse(raw) : null;
   } catch (err) {
-    console.error(`Error loading stored ${key}:`, err);
     return null;
   }
 };
 
-export const clearPersistedSelection = (key) => {
-  sessionStorage.removeItem(`selected_${key}`);
+export const clearSelectedItem = (key) => {
+  localStorage.removeItem(`selected_${key}`);
 };
