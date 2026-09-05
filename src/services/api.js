@@ -59,12 +59,20 @@ export const setAccountRestrictionHandler = (onRestricted) => {
 
 export const patientEndpoints = {
   // Discovery & Doctor Portfolio
-  filterDoctors: (specialization = '') => 
-    apiClient.get(`/filter/filter-doctors${specialization ? `?specialization=${specialization}` : ''}`),
-  
-  searchDoctorsByName: (name = '') =>
-    apiClient.get(`/filter/search-doctor-name?name=${encodeURIComponent(name)}`),
 
+  filterDoctors: ({ specialization = '', name = '', pincode = '', limit = 10, offset = 0 } = {}) => {
+    const params = new URLSearchParams();
+    
+    if (specialization) params.append('specialization', specialization);
+    if (name) params.append('name', name);
+    if (pincode) params.append('pincode', pincode);
+    if (limit) params.append('limit', limit);
+    if (offset) params.append('offset', offset);
+
+    const queryString = params.toString();
+    return apiClient.get(`/filter/filter-doctors${queryString ? `?${queryString}` : ''}`);
+  },
+  
   showDoctorSlots: (doctorId) => 
     apiClient.get(`/auth/show-slots/${doctorId}`),
   

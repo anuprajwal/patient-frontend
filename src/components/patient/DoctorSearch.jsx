@@ -49,22 +49,24 @@ export default function DoctorSearch({ onSelectDoctor }) {
     setLoading(true);
     setError('');
     try {
-      let response;
-      if (searchName.trim() !== '') {
-        response = await patientEndpoints.searchDoctorsByName(searchName);
-      } else {
-        response = await patientEndpoints.filterDoctors(specialization);
-      }
-      
-      if (response.data?.success || Array.isArray(response.data?.doctors)) {
-        setDoctors(response.data.doctors || response.data || []);
+      const response = await patientEndpoints.filterDoctors({
+        name: searchName.trim(),
+        specialization: specialization || '',
+      });
+
+      if (response.data?.success && Array.isArray(response.data?.doctors)) {
+        setDoctors(response.data.doctors);
       } else {
         setDoctors([]);
       }
     } catch (err) {
       setError('Directory query returned exception. Pulling latest active clinical ledger.');
-      const fallback = await patientEndpoints.filterDoctors('');
-      setDoctors(fallback.data?.doctors || []);
+      try {
+        const fallback = await patientEndpoints.filterDoctors();
+        setDoctors(fallback.data?.doctors || []);
+      } catch {
+        setDoctors([]);
+      }
     } finally {
       setLoading(false);
     }
