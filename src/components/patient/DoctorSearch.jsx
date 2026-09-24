@@ -4,7 +4,6 @@ import Loader from '../ui/Loader';
 import Alert from '../ui/Alert';
 import { Search, User, Award, IndianRupee, ArrowRight, Filter, MapPin, Mail, Phone, ShieldCheck } from 'lucide-react';
 
-// Helper to format experience from practice_start_date (or fallback to legacy experience_years)
 const formatDoctorExperience = (practiceStartDate, legacyYears) => {
   if (practiceStartDate) {
     const [startYear, startMonth] = practiceStartDate.slice(0, 7).split('-').map(Number);
@@ -81,7 +80,7 @@ export default function DoctorSearch({ onSelectDoctor }) {
         <p className="text-slate-500 text-sm">Query certified medical experts matching real-time clinic status variables.</p>
       </div>
 
-      <form onSubmit={(e) => { e.preventDefault(); executeSearch(); }} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
+      <form onChange={(e) => { e.preventDefault(); executeSearch(); }} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
         <div className="flex-1 relative">
           <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
