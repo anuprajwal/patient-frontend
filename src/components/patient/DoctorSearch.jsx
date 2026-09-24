@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { patientEndpoints } from '../../services/api';
 import Loader from '../ui/Loader';
 import Alert from '../ui/Alert';
@@ -44,13 +44,14 @@ export default function DoctorSearch({ onSelectDoctor }) {
 
   const specialties = ['Cardiologist', 'Dermatologist', 'Neurologist', 'Pediatrician', 'General Physician'];
 
-  const executeSearch = async () => {
+  // Centralized query execution accepting latest parameter values directly
+  const executeSearch = useCallback(async (nameQuery = searchName, specQuery = specialization) => {
     setLoading(true);
     setError('');
     try {
       const response = await patientEndpoints.filterDoctors({
-        name: searchName.trim(),
-        specialization: specialization || '',
+        name: nameQuery.trim(),
+        specialization: specQuery || '',
       });
 
       if (response.data?.success && Array.isArray(response.data?.doctors)) {
@@ -69,9 +70,22 @@ export default function DoctorSearch({ onSelectDoctor }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { executeSearch(); }, [specialization]);
+  // Trigger debounced search whenever searchName or specialization changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      executeSearch(searchName, specialization);
+    }, 300); // 300ms debounce prevents API hammering on every keystroke
+
+    return () => clearTimeout(timer); // Cancel pending execution if user types again
+  }, [searchName, specialization, executeSearch]);
+
+  const handleSpecializationChange = (e) => {
+    const newSpec = e.target.value;
+    setSearchName('');
+    setSpecialization(newSpec);
+  };
 
   return (
     <div className="space-y-6">
@@ -80,13 +94,13 @@ export default function DoctorSearch({ onSelectDoctor }) {
         <p className="text-slate-500 text-sm">Query certified medical experts matching real-time clinic status variables.</p>
       </div>
 
-      <form onSubmit={(e) => { e.preventDefault(); executeSearch(); }} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
+      <form onSubmit={(e) => { e.preventDefault(); executeSearch(searchName, specialization); }} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
         <div className="flex-1 relative">
           <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchName}
-            onChange={(e) =>{ setSearchName(e.target.value); executeSearch(); }}
+            onChange={(e) => setSearchName(e.target.value)}
             placeholder="Type doctor's name to look up..."
             className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
@@ -96,7 +110,7 @@ export default function DoctorSearch({ onSelectDoctor }) {
           <Filter className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <select
             value={specialization}
-            onChange={(e) => { setSearchName(''); setSpecialization(e.target.value); executeSearch(); }}
+            onChange={handleSpecializationChange}
             className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 appearance-none"
           >
             <option value="">All Specializations</option>
@@ -149,7 +163,6 @@ export default function DoctorSearch({ onSelectDoctor }) {
                     </div>
                   </div>
 
-                  {/* Enhanced Parameter Layout Data Grids */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs font-medium text-slate-600 border-t border-slate-100">
                     <div className="space-y-2">
                       <div className="flex items-center gap-2"><Award className="w-4 h-4 text-slate-400" /> <span>{expText}</span></div>
