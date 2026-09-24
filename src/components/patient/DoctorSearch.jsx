@@ -80,13 +80,13 @@ export default function DoctorSearch({ onSelectDoctor }) {
         <p className="text-slate-500 text-sm">Query certified medical experts matching real-time clinic status variables.</p>
       </div>
 
-      <form onChange={(e) => { e.preventDefault(); executeSearch(); }} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
+      <form onSubmit={(e) => { e.preventDefault(); executeSearch(); }} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4">
         <div className="flex-1 relative">
           <Search className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchName}
-            onChange={(e) => setSearchName(e.target.value)}
+            onChange={(e) =>{ setSearchName(e.target.value); executeSearch(); }}
             placeholder="Type doctor's name to look up..."
             className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
@@ -96,7 +96,7 @@ export default function DoctorSearch({ onSelectDoctor }) {
           <Filter className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <select
             value={specialization}
-            onChange={(e) => { setSearchName(''); setSpecialization(e.target.value); }}
+            onChange={(e) => { setSearchName(''); setSpecialization(e.target.value); executeSearch(); }}
             className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 appearance-none"
           >
             <option value="">All Specializations</option>
