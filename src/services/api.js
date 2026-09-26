@@ -1,65 +1,81 @@
-import axios from 'axios';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.docapp.co.in/api';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://api.docapp.co.in/api';
+const makeRequest = async (endpoint, options = {}) => {
+  const url = `${BASE_URL}${endpoint}`;
+  
+  const headers = {
+    ...options.headers,
+  };
 
-const getCookieToken = () => {
-  const match = document.cookie.match(new RegExp('(^| )auth_token=([^;]+)'));
-  return match ? decodeURIComponent(match[2]) : localStorage.getItem('auth_token');
-};
+  // Default Content-Type to application/json unless sending FormData
+  if (!(options.body instanceof FormData) && !headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
 
-const deleteAuthCookiesAndRedirect = () => {
-  document.cookie = "auth_token=; path=/; domain=.docapp.co.in; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
-  document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
-  localStorage.removeItem('auth_token');
-  window.location.href = 'https://auth.docapp.co.in';
-};
+  const config = {
+    ...options,
+    headers,
+    // Automatically sends HttpOnly cookies across subdomains
+    credentials: 'include', 
+  };
 
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-});
+  if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
+    config.body = JSON.stringify(options.body);
+  }
 
-apiClient.interceptors.request.use(
-  (config) => {
-    const token = getCookieToken();
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  try {
+    const response = await fetch(url, config);
+    let responseData = null;
+    const contentType = response.headers.get('content-type');
+    
+    if (contentType && contentType.includes('application/json')) {
+      responseData = await response.json();
     }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
 
+    if (!response.ok) {
+      const errorMsg = responseData?.message || '';
 
-export const setAccountRestrictionHandler = (onRestricted) => {
-  apiClient.interceptors.response.use(
-    (response) => response,
-    (error) => {
-      const errorMsg = error.response?.data?.message || '';
-      
-      if (error.response?.status === 403 && (errorMsg.includes('hold') || errorMsg.includes('deleted'))) {
-        onRestricted({
-          status: errorMsg.includes('deleted') ? 'deleted' : 'holded',
-          message: errorMsg
-        });
-        return new Promise(() => {});
+      // Account restriction handling (403 on hold or deleted)
+      if (response.status === 403 && (errorMsg.includes('hold') || errorMsg.includes('deleted'))) {
+        if (typeof window.__onAccountRestricted === 'function') {
+          window.__onAccountRestricted({
+            status: errorMsg.includes('deleted') ? 'deleted' : 'holded',
+            message: errorMsg
+          });
+        }
+        return new Promise(() => {}); // Suspend execution chain
       }
 
+      // Authentication expiry handling
       if (
-        error.response?.status === 401 || 
+        response.status === 401 || 
         errorMsg.includes('jwt expired') || 
         errorMsg.includes('Invalid or expired admin token')
       ) {
-        deleteAuthCookiesAndRedirect();
+        window.location.href = 'https://auth.docapp.co.in'; // Redirect to login
+        return;
       }
-      return Promise.reject(error);
+      
+      const error = new Error(errorMsg || `HTTP Exception: ${response.status}`);
+      error.response = { data: responseData, status: response.status };
+      throw error;
     }
-  );
+
+    return { data: responseData, status: response.status };
+  } catch (error) {
+    if (!error.response) {
+      error.message = `Network connectivity layer failure: ${error.message}`;
+    }
+    throw error;
+  }
 };
 
+export const setAccountRestrictionHandler = (onRestricted) => {
+  window.__onAccountRestricted = onRestricted;
+};
 
 export const patientEndpoints = {
   // Discovery & Doctor Portfolio
-
   filterDoctors: ({ specialization = '', name = '', pincode = '', limit = 10, offset = 0 } = {}) => {
     const params = new URLSearchParams();
     
@@ -70,95 +86,91 @@ export const patientEndpoints = {
     if (offset) params.append('offset', offset);
 
     const queryString = params.toString();
-    return apiClient.get(`/filter/filter-doctors${queryString ? `?${queryString}` : ''}`);
+    return makeRequest(`/filter/filter-doctors${queryString ? `?${queryString}` : ''}`, { method: 'GET' });
   },
   
   showDoctorSlots: (doctorId) => 
-    apiClient.get(`/auth/show-slots/${doctorId}`),
-  
-  filterHospitals: (type = 'hospital', pincode = '') => 
-    apiClient.get(`/filter/filter-hospitals?type=${type}${pincode ? `&pincode=${pincode}` : ''}`),
+    makeRequest(`/auth/show-slots/${doctorId}`, { method: 'GET' }),
 
   getDoctorRating: (doctorId) =>
-    apiClient.get(`/reviews/get-doctor-rating/${doctorId}`),
+    makeRequest(`/reviews/get-doctor-rating/${doctorId}`, { method: 'GET' }),
 
   // Profile Management
-  getUserData: () => apiClient.get('/auth/get-user-data'),
-  completeProfile: (payload) => apiClient.put('/auth/profile/complete/general_user', payload),
-  uploadPhoto: (formData) => apiClient.post('/auth/upload-photo', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
-  deletePhoto: () => apiClient.delete('/auth/delete-profile-pic'),
-  changePassword: (newPassword) => apiClient.put('/auth/change-password', { newPassword }),
+  getUserData: () => makeRequest('/auth/get-user-data', { method: 'GET' }),
+  completeProfile: (payload) => makeRequest('/auth/profile/complete/general_user', { method: 'PUT', body: payload }),
+  uploadPhoto: (formData) => makeRequest('/auth/upload-photo', { method: 'POST', body: formData }),
+  deletePhoto: () => makeRequest('/auth/delete-profile-pic', { method: 'DELETE' }),
+  changePassword: (newPassword) => makeRequest('/auth/change-password', { method: 'PUT', body: { newPassword } }),
 
   // OTP Verification Infrastructure
-  sendEmailOtp: () => apiClient.post('/verify/sendEmailOtp'),
-  sendMobileOtp: () => apiClient.post('/verify/sendMobileOtp'),
-  verifyOtp: (payload) => apiClient.post('/verify/verifyEmailMobile', payload),
+  sendEmailOtp: () => makeRequest('/verify/sendEmailOtp', { method: 'POST' }),
+  sendMobileOtp: () => makeRequest('/verify/sendMobileOtp', { method: 'POST' }),
+  verifyOtp: (payload) => makeRequest('/verify/verifyEmailMobile', { method: 'POST', body: payload }),
 
   // Address CRUD Matrix
-  addAddress: (payload) => apiClient.post('/address/addAddress', payload),
-  getAllAddress: () => apiClient.get('/address/getAllAddress'),
-  updateAddress: (payload) => apiClient.put('/address/updateAddress', payload),
-  deleteAddress: (addressId) => apiClient.delete('/address/deleteAddress', { data: { addressId } }),
+  addAddress: (payload) => makeRequest('/address/addAddress', { method: 'POST', body: payload }),
+  getAllAddress: () => makeRequest('/address/getAllAddress', { method: 'GET' }),
+  updateAddress: (payload) => makeRequest('/address/updateAddress', { method: 'PUT', body: payload }),
+  deleteAddress: (addressId) => makeRequest('/address/deleteAddress', { method: 'DELETE', body: { addressId } }),
 
   // Appointments & Razorpay Payment Integrations
   listAppointments: () => 
-    apiClient.get('/appointment/list-appointments'),
+    makeRequest('/appointment/list-appointments', { method: 'GET' }),
     
   createAppointment: (payload) =>
-    apiClient.post('/appointment/create-appointment', payload),
+    makeRequest('/appointment/create-appointment', { method: 'POST', body: payload }),
 
   // Follow-up Checkup Appointment Scheduling
   scheduleCheckupAppointment: (payload) =>
-    apiClient.post('/appointment/schedule-checkup-appointment', payload),
+    makeRequest('/appointment/schedule-checkup-appointment', { method: 'POST', body: payload }),
 
   verifyPayment: (payload) =>
-    apiClient.post('/verify', payload),
+    makeRequest('/verify', { method: 'POST', body: payload }),
 
   confirmAppointment: (payload) =>
-    apiClient.put('/appointment/confirm-appointment', payload),
+    makeRequest('/appointment/confirm-appointment', { method: 'PUT', body: payload }),
 
   // Supporting Medical Documents CRUD
   uploadAppointmentDocument: (formData) =>
-    apiClient.post('/appointment/upload-appointment-document', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    }),
+    makeRequest('/appointment/upload-appointment-document', { method: 'POST', body: formData }),
     
   deleteAppointmentDocument: (documentId) =>
-    apiClient.delete(`/appointment/delete-document/${documentId}`),
+    makeRequest(`/appointment/delete-document/${documentId}`, { method: 'DELETE' }),
     
   replaceAppointmentDocument: (documentId, formData) =>
-    apiClient.put(`/appointment/replace-document/${documentId}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    }),
+    makeRequest(`/appointment/replace-document/${documentId}`, { method: 'PUT', body: formData }),
 
   submitDoctorReview: (payload) =>
-    apiClient.post('/reviews/doctor-review-ratings', payload),
+    makeRequest('/reviews/doctor-review-ratings', { method: 'POST', body: payload }),
     
   getSingleDocument: (documentId) =>
-    apiClient.get(`/appointment/get-document/${documentId}`),
+    makeRequest(`/appointment/get-document/${documentId}`, { method: 'GET' }),
     
   getDocumentsForAppointment: (appointmentId) =>
-    apiClient.get(`/appointment/get-document-for/${appointmentId}`),
+    makeRequest(`/appointment/get-document-for/${appointmentId}`, { method: 'GET' }),
 
   getPrescriptionForAppointment: (appointmentId) => 
-    apiClient.get(`/appointment/get-prescription-for/${appointmentId}`),
+    makeRequest(`/appointment/get-prescription-for/${appointmentId}`, { method: 'GET' }),
 
   getDoctorAddressByUserId: (userId) => 
-    apiClient.get(`/address/getAllAddress/${userId}`),
+    makeRequest(`/address/getAllAddress/${userId}`, { method: 'GET' }),
 
   filterHospitals: (type = 'hospital', limit = 10, offset = 0, pincode = '') =>
-    apiClient.get(
+    makeRequest(
       `/filter/filter-hospitals?type=${encodeURIComponent(type)}&limit=${limit}&offset=${offset}${
         pincode ? `&pincode=${encodeURIComponent(pincode)}` : ''
-      }`
+      }`,
+      { method: 'GET' }
     ),
 
   // Fetch Doctors belonging to an Organisation / Hospital
   getHospitalDoctors: (organisationId, limit = 10, offset = 0) =>
-    apiClient.get(`/filter/get-hospital-doctors/${organisationId}?limit=${limit}&offset=${offset}`),
+    makeRequest(`/filter/get-hospital-doctors/${organisationId}?limit=${limit}&offset=${offset}`, { method: 'GET' }),
 
-  saveNotificationToken: (token, platform = 'web') => 
-    apiClient.post('/notifications/save-token', { spmToken }),
+  saveNotificationToken: (spmToken, platform = 'web') => 
+    makeRequest('/notifications/save-token', { method: 'POST', body: { spmToken, platform } }),
 
-  logout: () => deleteAuthCookiesAndRedirect()
+  logout: () => {
+    window.location.href = 'https://auth.docapp.co.in';
+  }
 };
