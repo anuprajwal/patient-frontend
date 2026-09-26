@@ -37,6 +37,20 @@ export default function VerificationModal({ target, phoneNumber, onClose, onSucc
     }
   };
 
+const onOtpChange = (type, rawValue) => {
+    // Check for non-numeric characters
+    if (rawValue !== '' && !/^\d+$/.test(rawValue)) {
+      return;
+    }
+    // Check for length exceeding 6 characters
+    if (rawValue.length > 6) {
+      return;
+    }
+
+    // Clear error if input is valid
+    setOtp(rawValue);
+  };
+
   return (
     <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="bg-white border border-slate-200 w-full max-w-md rounded-xl shadow-2xl overflow-hidden p-6 space-y-4 relative">
@@ -58,7 +72,7 @@ export default function VerificationModal({ target, phoneNumber, onClose, onSucc
             maxLength={6}
             required
             value={otp}
-            onChange={(e) => setOtp(e.target.value)}
+            onChange={(e) => onOtpChange('otp', e.target.value)}
             placeholder="000000"
             className="w-full bg-slate-50 border border-slate-200 rounded-lg text-center font-mono font-extrabold tracking-widest text-xl py-3 focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
