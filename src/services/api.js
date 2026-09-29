@@ -48,9 +48,9 @@ const makeRequest = async (endpoint, options = {}) => {
 
       // Authentication expiry handling
       if (
-        response.status === 401 || 
+        response.status === 401|| response.status === 403 || 
         errorMsg.includes('jwt expired') || 
-        errorMsg.includes('Invalid or expired admin token')
+        errorMsg.includes('Invalid or expired token')
       ) {
         window.location.href = 'https://auth.docapp.co.in'; // Redirect to login
         return;

@@ -37,7 +37,7 @@ export default function VerificationModal({ target, phoneNumber, onClose, onSucc
     }
   };
 
-const onOtpChange = (type, rawValue) => {
+  const onOtpChange = (type, rawValue) => {
     // Check for non-numeric characters
     if (rawValue !== '' && !/^\d+$/.test(rawValue)) {
       return;
