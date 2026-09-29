@@ -27,7 +27,8 @@ export default function VerificationModal({ target, phoneNumber, onClose, onSucc
     try {
       await patientEndpoints.verifyOtp({
         userOtp: otp,
-        ...(target === 'mobile' && { phoneNumber })
+        email: target === 'email' ? phoneNumber : undefined,
+        mobile: target === 'mobile' ? phoneNumber : undefined,
       });
       onSuccess();
     } catch (err) {
