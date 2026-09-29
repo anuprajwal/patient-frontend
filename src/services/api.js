@@ -105,7 +105,7 @@ export const patientEndpoints = {
   // OTP Verification Infrastructure
   sendEmailOtp: () => makeRequest('/verify/sendEmailOtp', { method: 'POST' }),
   sendMobileOtp: () => makeRequest('/verify/sendMobileOtp', { method: 'POST' }),
-  verifyOtp: (payload) => makeRequest('/verify/verifyEmailMobile', { method: 'POST', body: payload }),
+  verifyOtp: (payload) => makeRequest('/verify/verifyEmailMobile', { method: 'PUT', body: payload }),
 
   // Address CRUD Matrix
   addAddress: (payload) => makeRequest('/address/addAddress', { method: 'POST', body: payload }),
