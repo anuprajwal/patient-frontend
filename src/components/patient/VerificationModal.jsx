@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { patientEndpoints } from '../../services/api';
 import Alert from '../ui/Alert';
 import { ShieldAlert, X } from 'lucide-react';
@@ -8,8 +8,14 @@ export default function VerificationModal({ target, phoneNumber, onClose, onSucc
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const sentTargetRef = useRef(null);
+
   useEffect(() => {
+    // Avoid re-sending if we've already triggered an OTP for this target
+    if (sentTargetRef.current === target) return;
+
     const triggerOtpRequest = async () => {
+      sentTargetRef.current = target;
       try {
         if (target === 'email') await patientEndpoints.sendEmailOtp();
         else await patientEndpoints.sendMobileOtp();
@@ -17,6 +23,7 @@ export default function VerificationModal({ target, phoneNumber, onClose, onSucc
         setError('Failed to transmit authorization handshake token across server pipelines.');
       }
     };
+
     triggerOtpRequest();
   }, [target]);
 
