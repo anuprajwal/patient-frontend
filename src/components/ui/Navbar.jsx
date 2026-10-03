@@ -14,7 +14,7 @@ export default function Navbar({ currentView, setView }) {
       const deleteAuthCookiesAndRedirect = () => {
         document.cookie = "auth_token=; path=/; domain=.docapp.co.in; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
         document.cookie = "auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT;";
-        window.location.href = 'https://auth.docapp.co.in';
+        window.location.href = 'https://docapp.co.in';
       };
       deleteAuthCookiesAndRedirect();
     }
