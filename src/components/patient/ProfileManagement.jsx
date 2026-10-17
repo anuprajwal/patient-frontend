@@ -8,7 +8,7 @@ import { User, Calendar, MapPin, Key, Upload, Trash2, CheckCircle } from 'lucide
 export default function ProfileManagement() {
   const [profileForm, setProfileForm] = useState({ date_of_birth: '', gender: '' });
   const [addresses, setAddresses] = useState([]);
-  const [addressForm, setAddressForm] = useState({ country: 'India', state: '', city: '', pincode: '', street: '', landmark: '', houseNo: '' });
+  const [addressForm, setAddressForm] = useState({ country: 'India', state: '', city: '', pincode: '', street: '', landmark: '', house_no: '' });
   const [editingAddressId, setEditingAddressId] = useState(null);
   const [passwordForm, setPasswordForm] = useState({ newPassword: '' });
   const [userData, setUserData] = useState(null);
@@ -93,7 +93,7 @@ export default function ProfileManagement() {
         await patientEndpoints.addAddress(addressForm);
         triggerAlert('success', 'Address added successfully.');
       }
-      setAddressForm({ country: 'India', state: '', city: '', pincode: '', street: '', landmark: '', houseNo: '' });
+      setAddressForm({ country: 'India', state: '', city: '', pincode: '', street: '', landmark: '', house_no: '' });
       setEditingAddressId(null);
       syncProfileData();
     } catch (err) {
@@ -253,7 +253,7 @@ export default function ProfileManagement() {
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase">House / Flat No.</label>
-                <input type="text" value={addressForm.houseNo} onChange={(e) => setAddressForm({ ...addressForm, houseNo: e.target.value })} className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-brand-500 font-medium" />
+                <input type="text" value={addressForm.house_no} onChange={(e) => setAddressForm({ ...addressForm, house_no: e.target.value })} className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-brand-500 font-medium" />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase">City</label>
@@ -282,7 +282,7 @@ export default function ProfileManagement() {
               {addresses.map((addr) => (
                 <div key={addr.id} className="border border-slate-200 p-4 rounded-xl flex justify-between items-start hover:bg-slate-50/50 transition-colors">
                   <div className="text-sm">
-                    <p className="font-bold text-slate-800">{addr.street} {addr.houseNo ? `, Apt ${addr.houseNo}` : ''}</p>
+                    <p className="font-bold text-slate-800">{addr.street} {addr.house_no ? `, Apt ${addr.house_no}` : ''}</p>
                     <p className="text-slate-500 text-xs mt-0.5 font-medium">{addr.city}, {addr.state} - <span className="text-slate-700 font-semibold">{addr.pincode}</span> | {addr.country}</p>
                     {addr.landmark && <p className="text-slate-400 text-[11px] italic mt-1 font-medium">Landmark: {addr.landmark}</p>}
                   </div>
@@ -290,7 +290,7 @@ export default function ProfileManagement() {
                     <button
                       onClick={() => {
                         setEditingAddressId(addr.id);
-                        setAddressForm({ country: addr.country || 'India', state: addr.state, city: addr.city, pincode: addr.pincode, street: addr.street, landmark: addr.landmark || '', houseNo: addr.house_no || addr.houseNo || '' });
+                        setAddressForm({ country: addr.country || 'India', state: addr.state, city: addr.city, pincode: addr.pincode, street: addr.street, landmark: addr.landmark || '', house_no: addr.house_no || '' });
                       }}
                       className="text-xs bg-white hover:bg-slate-50 text-slate-600 border border-slate-200 font-bold px-2.5 py-1.5 rounded-lg shadow-sm"
                     >
