@@ -88,6 +88,7 @@ export default function ProfileManagement() {
     try {
       if (editingAddressId) {
         await patientEndpoints.updateAddress({ addressId: editingAddressId, ...addressForm });
+        console.log('Address updated:', editingAddressId, addressForm);
         triggerAlert('success', 'Address updated successfully.');
       } else {
         await patientEndpoints.addAddress(addressForm);
