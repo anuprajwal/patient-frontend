@@ -85,12 +85,15 @@ export default function ProfileManagement() {
 
   const handleAddressSubmit = async (e) => {
     e.preventDefault();
+    console.log('Submitting address:', editingAddressId, addressForm);
     try {
+      console.log('Address form data:', addressForm);
       if (editingAddressId) {
         await patientEndpoints.updateAddress({ addressId: editingAddressId, ...addressForm });
         console.log('Address updated:', editingAddressId, addressForm);
         triggerAlert('success', 'Address updated successfully.');
       } else {
+        console.log('Adding new address:', addressForm);
         await patientEndpoints.addAddress(addressForm);
         triggerAlert('success', 'Address added successfully.');
       }
