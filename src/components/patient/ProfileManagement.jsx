@@ -250,7 +250,14 @@ export default function ProfileManagement() {
           <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-6">
             <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2"><MapPin className="w-4 h-4 text-slate-400" /> Saved Addresses</h3>
             
-            <form onSubmit={handleAddressSubmit} className="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                console.log('Form onSubmit fired!');
+                handleAddressSubmit(e);
+              }}
+              className="bg-slate-50 p-4 rounded-xl border border-slate-200 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"
+            >
               <div className="sm:col-span-2">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase">Street Address</label>
                 <input type="text" required value={addressForm.street} onChange={(e) => setAddressForm({ ...addressForm, street: e.target.value })} className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-brand-500 font-medium" />
@@ -276,7 +283,7 @@ export default function ProfileManagement() {
                   <label className="block text-[10px] font-bold text-slate-500 uppercase">Landmark (Optional)</label>
                   <input type="text" value={addressForm.landmark} onChange={(e) => setAddressForm({ ...addressForm, landmark: e.target.value })} className="mt-1 w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-brand-500 font-medium" />
                 </div>
-                <button type="submit" className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-4 py-2.5 rounded-lg h-fit shadow-sm border border-slate-800">
+                <button type="submit" onClick={() => console.log('Button clicked!')} className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-4 py-2.5 rounded-lg h-fit shadow-sm border border-slate-800">
                   {editingAddressId ? 'Save Address' : 'Add Address'}
                 </button>
               </div>
